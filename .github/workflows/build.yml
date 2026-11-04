@@ -2,6 +2,7 @@ name: Build
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -25,8 +26,20 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      # Android only installs an update signed with the same key as the app already on the phone,
+      # so every build shares one key. Pull requests from forks can't read secrets, so they get a
+      # throwaway key, which is fine because those builds aren't for updating anyone's phone.
+      - name: Use the shared debug signing key
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            mkdir -p ~/.android
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          fi
+
+      - name: Run tests and build debug APK
+        run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
 
       - name: Name the APK
         run: mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/openlift-debug-${GITHUB_SHA::7}.apk"
