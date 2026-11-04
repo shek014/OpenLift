@@ -10,7 +10,7 @@
 
 ## What works today
 
-- **Home:** your latest workouts in order, each with a menu to share it, save it as a routine, copy it into a new workout, edit it or delete it.
+- **Home:** your latest workouts in order, showing the time, volume and exercises of each, with a menu to share it, save it as a routine, copy it into a new workout, edit it or delete it.
 - **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Mark a set as warm-up, superset, drop set or failure. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
 - **Timed exercises:** planks, hangs and carries are tracked by time, with a built-in stopwatch on each set, or type the time yourself.
 - **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
@@ -21,7 +21,7 @@
 - **Statistics:** totals, averages, streaks, your busiest days, sets per muscle and your most done exercises, plus graphs of estimated 1 rep max, best set volume, session volume and total reps for each exercise, and your best weight for each rep count.
 - **Body measurements:** optionally track body weight, height, body fat and measurements such as waist and arms, with a graph for each. BMI is off unless you turn it on.
 - **Exercise library:** 101 exercises, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
-- **Body map:** the Home page shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
+- **Body map:** the Body screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 72, and a log of every set you've done.
 - **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, BMI, and how long the rest timer runs.
 

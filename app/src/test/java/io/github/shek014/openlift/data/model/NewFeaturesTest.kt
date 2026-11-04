@@ -511,3 +511,48 @@ class SetDetailsTest {
         assertEquals(listOf("bench" to ExercisePlan(2, 5, 10)), workout.toRoutinePlans())
     }
 }
+
+class HomeCardTest {
+    private val zone = ZoneOffset.UTC
+    private val now = LocalDate.of(2026, 11, 4).atTime(18, 0).toInstant(zone).toEpochMilli()
+    private val minute = 60_000L
+    private val hour = 60 * minute
+
+    private fun startingAt(hourOfDay: Int, name: String? = null) = Workout(
+        id = 1,
+        startedAt = LocalDate.of(2026, 11, 4).atTime(hourOfDay, 30).toInstant(zone).toEpochMilli(),
+        finishedAt = now,
+        name = name,
+        exercises = emptyList(),
+    )
+
+    @Test
+    fun `unnamed workouts are named for the time of day`() {
+        assertEquals("Morning workout", startingAt(5).displayName(zone))
+        assertEquals("Morning workout", startingAt(11).displayName(zone))
+        assertEquals("Afternoon workout", startingAt(12).displayName(zone))
+        assertEquals("Evening workout", startingAt(17).displayName(zone))
+        assertEquals("Night workout", startingAt(21).displayName(zone))
+        assertEquals("Night workout", startingAt(4).displayName(zone))
+        assertEquals("Push", startingAt(9, "Push").displayName(zone))
+    }
+
+    @Test
+    fun `long durations read in words`() {
+        assertEquals("1h 22min", formatLongDuration(4920))
+        assertEquals("50min", formatLongDuration(3000))
+        assertEquals("0min", formatLongDuration(30))
+    }
+
+    @Test
+    fun `time ago gets less exact further back`() {
+        assertEquals("Just now", formatTimeAgo(now - 30_000, now, zone))
+        assertEquals("1 minute ago", formatTimeAgo(now - minute, now, zone))
+        assertEquals("59 minutes ago", formatTimeAgo(now - 59 * minute, now, zone))
+        assertEquals("1 hour ago", formatTimeAgo(now - hour, now, zone))
+        assertEquals("7 hours ago", formatTimeAgo(now - 7 * hour, now, zone))
+        assertEquals("Yesterday", formatTimeAgo(now - 30 * hour, now, zone))
+        assertEquals("3 days ago", formatTimeAgo(now - 72 * hour, now, zone))
+        assertEquals(formatDate(now - 168 * hour, zone), formatTimeAgo(now - 168 * hour, now, zone))
+    }
+}

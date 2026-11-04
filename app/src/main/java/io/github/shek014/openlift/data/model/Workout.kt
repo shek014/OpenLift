@@ -4,6 +4,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -164,9 +165,45 @@ fun parseDuration(text: String): Int? {
     return seconds?.takeIf { it > 0 }
 }
 
+/** The workout's name, or one from the time of day it started. */
+fun Workout.displayName(zone: ZoneId = ZoneId.systemDefault()): String {
+    name?.let { return it }
+    return when (Instant.ofEpochMilli(startedAt).atZone(zone).hour) {
+        in 5..11 -> "Morning workout"
+        in 12..16 -> "Afternoon workout"
+        in 17..20 -> "Evening workout"
+        else -> "Night workout"
+    }
+}
+
+/** A length of time in words: "1h 22min" or "50min". */
+fun formatLongDuration(totalSeconds: Long): String {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    return if (hours > 0) "${hours}h ${minutes}min" else "${minutes}min"
+}
+
+/** How long ago something was: "7 hours ago", "Yesterday", or the date once it's a week old. */
+fun formatTimeAgo(millis: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+    val minutes = (now - millis) / 60_000
+    val hours = minutes / 60
+    val days = ChronoUnit.DAYS.between(
+        Instant.ofEpochMilli(millis).atZone(zone).toLocalDate(),
+        Instant.ofEpochMilli(now).atZone(zone).toLocalDate(),
+    )
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> if (minutes == 1L) "1 minute ago" else "$minutes minutes ago"
+        hours < 24 -> if (hours == 1L) "1 hour ago" else "$hours hours ago"
+        days <= 1 -> "Yesterday"
+        days < 7 -> "$days days ago"
+        else -> formatDate(millis, zone)
+    }
+}
+
 /** The workout as plain text, for sharing to other apps. */
 fun Workout.toShareText(unit: WeightUnit): String = buildString {
-    appendLine(name ?: "Workout")
+    appendLine(displayName())
     appendLine(formatDate(finishedAt ?: startedAt))
     appendLine("${formatDuration(durationSeconds)} · ${completedSets.size} sets · ${formatVolume(volumeKg, unit)}")
     completedExercises.forEach { entry ->
@@ -190,9 +227,9 @@ fun Workout.toRoutinePlans(): List<Pair<String, ExercisePlan>> =
 
 fun formatRest(seconds: Int): String = if (seconds == 0) "Off" else formatDuration(seconds.toLong())
 
-fun formatDate(millis: Long): String =
+fun formatDate(millis: Long, zone: ZoneId = ZoneId.systemDefault()): String =
     Instant.ofEpochMilli(millis)
-        .atZone(ZoneId.systemDefault())
+        .atZone(zone)
         .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
 
 /** A copy of the list with the item at [from] moved to [to]. Out-of-range moves change nothing. */

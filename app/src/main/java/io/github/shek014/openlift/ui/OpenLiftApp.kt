@@ -1,5 +1,7 @@
 package io.github.shek014.openlift.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
@@ -126,6 +128,8 @@ fun OpenLiftApp(settings: AppSettings) {
         NavHost(
             navController = navController,
             startDestination = Tab.Home.route,
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
@@ -135,7 +139,6 @@ fun OpenLiftApp(settings: AppSettings) {
                     HomeScreen(
                         onOpenSettings = { navController.navigate("body/settings") },
                         onOpenBody = { navController.navigate(BodyRoute) },
-                        onMuscleClick = { muscle -> navController.navigate("body/muscle/${muscle.name}") },
                         onWorkoutClick = { id -> navController.navigate("home/workout/$id") },
                         onEditWorkout = { id -> navController.navigate("home/edit/$id") },
                         onWorkoutCopied = { navController.openTab(Tab.Workout) },
