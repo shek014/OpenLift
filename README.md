@@ -10,19 +10,24 @@
 
 ## What works today
 
-- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
+- **Home:** your latest workouts in order, each with a menu to share it, save it as a routine, copy it into a new workout, edit it or delete it.
+- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Mark a set as warm-up, superset, drop set or failure. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
+- **Timed exercises:** planks, hangs and carries are tracked by time, with a built-in stopwatch on each set, or type the time yourself.
+- **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
 - **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
 - **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
 - **History:** look back through finished workouts, edit or delete them, and see your volume, workouts and sets week by week.
-- **Progress:** a graph and personal records for each exercise, with new records called out when you finish a workout.
-- **Exercise library:** 100 exercises, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
-- **Body map:** the home screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
+- **Progress:** a graph and personal records for each exercise, going back as far as you've logged, with a notification the moment you set a new record.
+- **Statistics:** totals, averages, streaks, your busiest days, sets per muscle and your most done exercises, plus graphs of estimated 1 rep max, best set volume, session volume and total reps for each exercise, and your best weight for each rep count.
+- **Body measurements:** optionally track body weight, height, body fat and measurements such as waist and arms, with a graph for each. BMI is off unless you turn it on.
+- **Exercise library:** 101 exercises, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
+- **Body map:** the Home page shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 72, and a log of every set you've done.
-- **Settings:** dark or light theme, kilograms or pounds, and how long the rest timer runs.
+- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, BMI, and how long the rest timer runs.
 
 ## What's planned
 
-- **Animate every exercise:** fill in the 28 exercises that don't have an animation yet.
+- **Animate every exercise:** fill in the 29 exercises that don't have an animation yet.
 
 ## Roadmap
 
@@ -35,6 +40,12 @@
 - [x] Routines and recommended splits
 - [x] Workout history, with editing
 - [x] Progress graphs and personal records
+- [x] Home page with a menu on each workout
+- [x] Set types, timed exercises and record notifications
+- [x] Custom exercises
+- [x] Warm-up and plate calculators
+- [x] Advanced statistics
+- [x] Body measurements and optional BMI
 
 ## Try it
 
@@ -80,24 +91,27 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── ExerciseInstructions.kt  The How To steps
 │   ├── ExerciseMedia.kt     Finds each exercise's animation
 │   ├── ExerciseRepository.kt
-│   ├── AppSettings.kt       Theme, weight unit and rest length
+│   ├── AppSettings.kt       Theme, units, BMI and rest length
+│   ├── MeasurementRepository.kt
 │   ├── RecommendedSplits.kt The ready-made programs
 │   ├── RestTimer.kt
 │   ├── RestTimerService.kt  Keeps the timer running outside the app
 │   ├── RoutineRepository.kt
 │   ├── WorkoutRepository.kt
 │   ├── local/               Room database
-│   └── model/               Exercises, workouts, routines and progress
+│   └── model/               Exercises, workouts, routines, progress and statistics
 └── ui/
     ├── OpenLiftApp.kt       Bottom bar and tab navigation
     ├── body/                Body map and muscle screens
     ├── charts/              Line and bar charts
     ├── exercises/           Exercise library and exercise pages
-    ├── history/             Past workouts and editing them
+    ├── history/             Past workouts, editing them and statistics
+    ├── home/                The Home page
+    ├── measurements/        Body measurements and BMI
     ├── routines/            Routines and recommended splits
     ├── settings/            Settings
     ├── theme/               Colors and theming
-    └── workout/             Workout logging and summary
+    └── workout/             Workout logging, summary and calculators
 ```
 
 The animations are in `app/src/main/assets/exercise_media/`. `tools/build_exercise_gifs.py` builds them, using the list in `tools/everkinetic_gifs.tsv`.

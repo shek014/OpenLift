@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
+import io.github.shek014.openlift.data.model.LengthUnit
 import io.github.shek014.openlift.data.model.WeightUnit
 import io.github.shek014.openlift.data.model.formatDuration
 
@@ -32,6 +33,8 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
     val darkTheme by settings.darkTheme.collectAsStateWithLifecycle()
     val weightUnit by settings.weightUnit.collectAsStateWithLifecycle()
     val restSeconds by settings.restSeconds.collectAsStateWithLifecycle()
+    val lengthUnit by settings.lengthUnit.collectAsStateWithLifecycle()
+    val showBmi by settings.showBmi.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -63,6 +66,22 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
                 selected = weightUnit,
                 label = { it.label },
                 onSelect = settings::setWeightUnit,
+            )
+            Choices(
+                title = "Length unit",
+                note = "For body measurements. Your existing entries convert automatically.",
+                choices = LengthUnit.entries,
+                selected = lengthUnit,
+                label = { it.label },
+                onSelect = settings::setLengthUnit,
+            )
+            Choices(
+                title = "BMI",
+                note = "Shows on Body measurements once you've added your height and body weight.",
+                choices = listOf(false, true),
+                selected = showBmi,
+                label = { if (it) "Show" else "Hide" },
+                onSelect = settings::setShowBmi,
             )
             Choices(
                 title = "Rest timer",

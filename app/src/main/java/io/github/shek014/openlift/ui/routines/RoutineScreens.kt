@@ -415,10 +415,12 @@ private fun DraftExerciseRow(
         ) {
             PlanLabel("Sets")
             PlanField(draft.setsText, "Sets for $name") { text -> onChange { it.copy(setsText = text) } }
-            PlanLabel("Reps")
-            PlanField(draft.repsMinText, "Lowest reps for $name") { text -> onChange { it.copy(repsMinText = text) } }
-            PlanLabel("to")
-            PlanField(draft.repsMaxText, "Highest reps for $name") { text -> onChange { it.copy(repsMaxText = text) } }
+            if (!draft.exercise.isTimed) {
+                PlanLabel("Reps")
+                PlanField(draft.repsMinText, "Lowest reps for $name") { text -> onChange { it.copy(repsMinText = text) } }
+                PlanLabel("to")
+                PlanField(draft.repsMaxText, "Highest reps for $name") { text -> onChange { it.copy(repsMaxText = text) } }
+            }
         }
         if (draft.plan == null) {
             Text(

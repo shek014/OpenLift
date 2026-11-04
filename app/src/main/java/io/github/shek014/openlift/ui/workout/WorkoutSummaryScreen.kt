@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.NewRecord
+import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.format
 import io.github.shek014.openlift.data.model.formatDuration
@@ -164,9 +165,9 @@ fun WorkoutSummary(workout: Workout, newRecords: List<Pair<String, NewRecord>> =
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
-                entry.sets.filter { it.completed }.forEachIndexed { index, set ->
+                entry.workSets.forEachIndexed { index, set ->
                     Text(
-                        text = "${index + 1}.  ${formatSet(set.weightKg, set.reps, unit)}",
+                        text = "${index + 1}.  ${formatSet(set.weightKg, set.reps, unit, set.durationSeconds)}${if (set.setType == SetType.Normal) "" else " (${set.setType.label})"}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

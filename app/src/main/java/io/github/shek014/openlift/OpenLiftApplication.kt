@@ -10,6 +10,7 @@ import coil3.gif.GifDecoder
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
+import io.github.shek014.openlift.data.MeasurementRepository
 import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.RoutineRepository
 import io.github.shek014.openlift.data.WorkoutRepository
@@ -31,6 +32,8 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
     val routineRepository by lazy {
         RoutineRepository(database.routineDao(), database.workoutDao(), exerciseRepository)
     }
+
+    val measurementRepository by lazy { MeasurementRepository(database.measurementDao()) }
 
     val restTimer by lazy { RestTimer(this, applicationScope) }
 

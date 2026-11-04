@@ -28,7 +28,7 @@ class ExerciseListViewModel(repository: ExerciseRepository) : ViewModel() {
 
     /** The exercises matching [filter], or null until they've loaded. */
     val exercises: StateFlow<List<Exercise>?> =
-        combine(repository.exercises, snapshotFlow { filter }) { all, filter -> all.filteredBy(filter) }
+        combine(repository.selectableExercises, snapshotFlow { filter }) { all, filter -> all.filteredBy(filter) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setQuery(query: String) {

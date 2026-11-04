@@ -2,7 +2,9 @@ package io.github.shek014.openlift.data
 
 import android.content.Context
 import androidx.core.content.edit
+import io.github.shek014.openlift.data.model.LengthUnit
 import io.github.shek014.openlift.data.model.WeightUnit
+import io.github.shek014.openlift.data.model.defaultBarWeight
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,10 +18,37 @@ class AppSettings(context: Context) {
         WeightUnit.entries.find { it.name == preferences.getString(WeightUnitKey, null) } ?: WeightUnit.Kg,
     )
     private val restSecondsState = MutableStateFlow(preferences.getInt(RestSecondsKey, DefaultRestSeconds))
+    private val lengthUnitState = MutableStateFlow(
+        LengthUnit.entries.find { it.name == preferences.getString(LengthUnitKey, null) } ?: LengthUnit.Cm,
+    )
 
     val darkTheme: StateFlow<Boolean> = darkThemeState.asStateFlow()
     val weightUnit: StateFlow<WeightUnit> = weightUnitState.asStateFlow()
     val restSeconds: StateFlow<Int> = restSecondsState.asStateFlow()
+    val lengthUnit: StateFlow<LengthUnit> = lengthUnitState.asStateFlow()
+
+    private val showBmiState = MutableStateFlow(preferences.getBoolean(ShowBmiKey, false))
+
+    /** BMI is off until someone turns it on. */
+    val showBmi: StateFlow<Boolean> = showBmiState.asStateFlow()
+
+    fun setShowBmi(show: Boolean) {
+        preferences.edit { putBoolean(ShowBmiKey, show) }
+        showBmiState.value = show
+    }
+
+    /** The bar someone uses for warm-ups, in [unit], remembered separately for each unit. */
+    fun barWeight(unit: WeightUnit): Double =
+        preferences.getFloat(BarWeightKey + unit.name, unit.defaultBarWeight().toFloat()).toDouble()
+
+    fun setBarWeight(unit: WeightUnit, weight: Double) {
+        preferences.edit { putFloat(BarWeightKey + unit.name, weight.toFloat()) }
+    }
+
+    fun setLengthUnit(unit: LengthUnit) {
+        preferences.edit { putString(LengthUnitKey, unit.name) }
+        lengthUnitState.value = unit
+    }
 
     /** Whether the app has already asked for permission to show notifications. */
     var askedForNotifications: Boolean
@@ -51,6 +80,9 @@ class AppSettings(context: Context) {
         private const val DarkThemeKey = "dark_theme"
         private const val WeightUnitKey = "weight_unit"
         private const val RestSecondsKey = "rest_seconds"
+        private const val ShowBmiKey = "show_bmi"
+        private const val LengthUnitKey = "length_unit"
+        private const val BarWeightKey = "bar_weight_"
         private const val AskedForNotificationsKey = "asked_for_notifications"
     }
 }

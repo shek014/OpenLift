@@ -67,13 +67,19 @@ class HistoryViewModel(repository: WorkoutRepository) : ViewModel() {
 @Composable
 fun HistoryScreen(
     onWorkoutClick: (workoutId: Long) -> Unit,
+    onStatistics: () -> Unit,
     viewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory),
 ) {
     val workouts by viewModel.workouts.collectAsStateWithLifecycle()
     val unit = LocalWeightUnit.current
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("History") })
+        TopAppBar(
+            title = { Text("History") },
+            actions = {
+                TextButton(onClick = onStatistics) { Text("Statistics") }
+            },
+        )
         val list = workouts ?: return@Column
         if (list.isEmpty()) {
             Text(

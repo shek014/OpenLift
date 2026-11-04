@@ -1,11 +1,13 @@
 package io.github.shek014.openlift.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import io.github.shek014.openlift.data.model.SetType
 
 /** A workout. While [finishedAt] is null it's the one in progress. Times are in milliseconds. */
 @Entity(tableName = "workouts", indices = [Index("finishedAt")])
@@ -67,6 +69,8 @@ data class WorkoutSetEntity(
     val weightKg: Double? = null,
     val reps: Int? = null,
     val completed: Boolean = false,
+    @ColumnInfo(defaultValue = "Normal") val setType: SetType = SetType.Normal,
+    val durationSeconds: Int? = null,
 )
 
 data class WorkoutExerciseWithSets(
@@ -87,5 +91,7 @@ data class LoggedSetRow(
     val finishedAt: Long,
     val exerciseId: String,
     val weightKg: Double?,
-    val reps: Int,
+    val reps: Int?,
+    val durationSeconds: Int?,
+    val setType: SetType,
 )

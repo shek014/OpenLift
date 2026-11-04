@@ -38,7 +38,7 @@ class MuscleViewModel(
 
     /** The exercises that work [muscle], or null until they've loaded. */
     val exercises: StateFlow<MuscleExercises?> =
-        repository.exercises
+        repository.selectableExercises
             .map { it.forMuscle(muscle) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 

@@ -24,4 +24,12 @@ data class Exercise(
     val equipment: Equipment,
     val primaryMuscles: List<Muscle>,
     val secondaryMuscles: List<Muscle> = emptyList(),
+    /** Made by the person using the app, rather than built in. */
+    val isCustom: Boolean = false,
+    /** Deleted from the lists, but kept because saved workouts may still refer to it. */
+    val isArchived: Boolean = false,
+    /** A custom exercise's own how-to steps, one per line. */
+    val notes: String? = null,
+    /** Tracked by time, like a plank or a hang, rather than by reps. */
+    val isTimed: Boolean = false,
 )

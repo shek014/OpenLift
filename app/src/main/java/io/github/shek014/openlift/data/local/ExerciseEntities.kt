@@ -1,5 +1,6 @@
 package io.github.shek014.openlift.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -16,6 +17,10 @@ data class ExerciseEntity(
     @PrimaryKey val id: String,
     val name: String,
     val equipment: Equipment,
+    @ColumnInfo(defaultValue = "0") val isCustom: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val isArchived: Boolean = false,
+    val notes: String? = null,
+    @ColumnInfo(defaultValue = "0") val isTimed: Boolean = false,
 )
 
 enum class MuscleRole { Primary, Secondary }
@@ -53,9 +58,21 @@ fun ExerciseWithMuscles.toExercise() = Exercise(
     equipment = exercise.equipment,
     primaryMuscles = muscles.filter { it.role == MuscleRole.Primary }.map { it.muscle },
     secondaryMuscles = muscles.filter { it.role == MuscleRole.Secondary }.map { it.muscle },
+    isCustom = exercise.isCustom,
+    isArchived = exercise.isArchived,
+    notes = exercise.notes,
+    isTimed = exercise.isTimed,
 )
 
-fun Exercise.toEntity() = ExerciseEntity(id = id, name = name, equipment = equipment)
+fun Exercise.toEntity() = ExerciseEntity(
+    id = id,
+    name = name,
+    equipment = equipment,
+    isCustom = isCustom,
+    isArchived = isArchived,
+    notes = notes,
+    isTimed = isTimed,
+)
 
 fun Exercise.toMuscleEntities(): List<ExerciseMuscleEntity> =
     primaryMuscles.map { ExerciseMuscleEntity(id, it, MuscleRole.Primary) } +

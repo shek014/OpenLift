@@ -4,6 +4,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import java.util.Locale
@@ -18,9 +19,11 @@ enum class ProgressMetric(val label: String, val usesWeight: Boolean) {
     HeaviestWeight("Heaviest weight", true),
     EstimatedMax("Estimated 1 rep max", true),
     BestSetVolume("Best set volume", true),
-    WorkoutVolume("Workout volume", true),
+    WorkoutVolume("Session volume", true),
     MostReps("Most reps in a set", false),
     TotalReps("Total reps", false),
+    LongestTime("Longest time", false),
+    TotalTime("Total time", false),
 }
 
 /**
@@ -32,22 +35,72 @@ fun estimatedMax(weightKg: Double, reps: Int): Double =
 
 /** This metric's value for the sets of one workout, or null if it doesn't apply to them. */
 fun ProgressMetric.valueFor(sets: List<LoggedSet>): Double? {
-    val weighted = sets.filter { (it.weightKg ?: 0.0) > 0 }
+    val withReps = sets.filter { it.reps > 0 }
+    val weighted = withReps.filter { (it.weightKg ?: 0.0) > 0 }
+    val timed = sets.mapNotNull { it.durationSeconds }
     return when (this) {
-        ProgressMetric.HeaviestWeight -> weighted.maxOfOrNull { it.weightKg!! }
+        ProgressMetric.HeaviestWeight -> sets.mapNotNull { it.weightKg }.filter { it > 0 }.maxOrNull()
         ProgressMetric.EstimatedMax -> weighted.maxOfOrNull { estimatedMax(it.weightKg!!, it.reps) }
         ProgressMetric.BestSetVolume -> weighted.maxOfOrNull { it.weightKg!! * it.reps }
         ProgressMetric.WorkoutVolume -> weighted.takeIf { it.isNotEmpty() }?.sumOf { it.weightKg!! * it.reps }
-        ProgressMetric.MostReps -> sets.maxOfOrNull { it.reps.toDouble() }
-        ProgressMetric.TotalReps -> sets.takeIf { it.isNotEmpty() }?.sumOf { it.reps.toDouble() }
+        ProgressMetric.MostReps -> withReps.maxOfOrNull { it.reps.toDouble() }
+        ProgressMetric.TotalReps -> withReps.takeIf { it.isNotEmpty() }?.sumOf { it.reps.toDouble() }
+        ProgressMetric.LongestTime -> timed.maxOrNull()?.toDouble()
+        ProgressMetric.TotalTime -> timed.takeIf { it.isNotEmpty() }?.sum()?.toDouble()
     }
 }
 
-/** The metrics worth showing for these sets. Weight metrics only apply if weight was ever logged. */
-fun availableMetrics(logged: List<LoggedSet>): List<ProgressMetric> {
-    if (logged.isEmpty()) return emptyList()
-    val hasWeight = logged.any { (it.weightKg ?: 0.0) > 0 }
-    return ProgressMetric.entries.filter { !it.usesWeight || hasWeight }
+/** The metrics that apply to these sets, leaving out, say, weight for a bodyweight exercise. */
+fun availableMetrics(logged: List<LoggedSet>): List<ProgressMetric> =
+    ProgressMetric.entries.filter { it.valueFor(logged) != null }
+
+/** The graphs for the Statistics screen, for the measures that apply to these sets. */
+fun statisticsMetrics(logged: List<LoggedSet>): List<ProgressMetric> {
+    val wanted = listOf(
+        ProgressMetric.EstimatedMax,
+        ProgressMetric.BestSetVolume,
+        ProgressMetric.WorkoutVolume,
+        ProgressMetric.TotalReps,
+        ProgressMetric.LongestTime,
+        ProgressMetric.TotalTime,
+    )
+    val available = availableMetrics(logged)
+    return wanted.filter { it in available }
+}
+
+data class RepBest(val reps: Int, val weightKg: Double, val achievedAt: Long)
+
+/** The heaviest weight ever lifted for each number of reps, fewest reps first. */
+fun repBests(logged: List<LoggedSet>): List<RepBest> =
+    logged
+        .filter { it.reps > 0 && (it.weightKg ?: 0.0) > 0 }
+        .groupBy { it.reps }
+        .map { (reps, sets) ->
+            val best = sets.maxOf { it.weightKg!! }
+            RepBest(reps, best, sets.filter { it.weightKg == best }.minOf { it.finishedAt })
+        }
+        .sortedBy { it.reps }
+
+data class SetRecord(val metric: ProgressMetric, val value: Double)
+
+/**
+ * The records one set just broke compared with [earlier] sets. With no earlier sets there's nothing
+ * to beat, so the first time doing an exercise never counts.
+ */
+fun setRecords(set: LoggedSet, earlier: List<LoggedSet>): List<SetRecord> {
+    if (earlier.isEmpty()) return emptyList()
+    val perSet = listOf(
+        ProgressMetric.HeaviestWeight,
+        ProgressMetric.EstimatedMax,
+        ProgressMetric.BestSetVolume,
+        ProgressMetric.MostReps,
+        ProgressMetric.LongestTime,
+    )
+    return perSet.mapNotNull { metric ->
+        val value = metric.valueFor(listOf(set)) ?: return@mapNotNull null
+        val best = metric.valueFor(earlier)
+        if (best == null || value > best) SetRecord(metric, value) else null
+    }
 }
 
 data class ChartPoint(val time: Long, val value: Double)
@@ -102,6 +155,7 @@ fun ProgressMetric.format(value: Double, unit: WeightUnit): String = when (this)
         val reps = value.roundToLong()
         if (reps == 1L) "1 rep" else "$reps reps"
     }
+    ProgressMetric.LongestTime, ProgressMetric.TotalTime -> formatDuration(value.roundToLong())
 }
 
 /** A value as it's drawn on a chart, in the unit it's shown in. */
@@ -149,14 +203,54 @@ fun weeklyTotals(
         val inWeek = byWeek[start].orEmpty()
         WeekTotal(
             weekStart = start,
-            value = when (metric) {
-                WeeklyMetric.Volume -> inWeek.sumOf { it.volumeKg }
-                WeeklyMetric.Workouts -> inWeek.size.toDouble()
-                WeeklyMetric.Sets -> inWeek.sumOf { it.completedSets.size }.toDouble()
-            },
+            value = metric.total(inWeek),
         )
     }
 }
+
+/** A total for a stretch of time. [monthly] says whether it covers a month rather than a week. */
+data class PeriodTotal(val start: LocalDate, val value: Double, val monthly: Boolean)
+
+/** More weeks than this is too many bars to tell apart, so the chart switches to months. */
+private const val MaxWeeklyBars = 104
+
+/** Totals for everything ever logged: weekly if that fits on a chart, or monthly if not. */
+fun allTimeTotals(
+    workouts: List<Workout>,
+    metric: WeeklyMetric,
+    today: LocalDate,
+    zone: ZoneId,
+    locale: Locale,
+): List<PeriodTotal> {
+    val dates = workouts.mapNotNull { workout ->
+        workout.finishedAt?.let { workout to Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
+    }
+    val earliest = dates.minOfOrNull { it.second } ?: today
+    val firstDay = WeekFields.of(locale).firstDayOfWeek
+    val weeks = ChronoUnit.WEEKS.between(
+        earliest.with(TemporalAdjusters.previousOrSame(firstDay)),
+        today.with(TemporalAdjusters.previousOrSame(firstDay)),
+    ).toInt() + 1
+    if (weeks <= MaxWeeklyBars) {
+        return weeklyTotals(workouts, metric, today, weeks, zone, locale).map { PeriodTotal(it.weekStart, it.value, false) }
+    }
+    val byMonth = dates.groupBy({ it.second.withDayOfMonth(1) }, { it.first })
+    val firstMonth = earliest.withDayOfMonth(1)
+    val months = ChronoUnit.MONTHS.between(firstMonth, today.withDayOfMonth(1))
+    return (0..months).map { offset ->
+        val month = firstMonth.plusMonths(offset)
+        PeriodTotal(month, metric.total(byMonth[month].orEmpty()), true)
+    }
+}
+
+private fun WeeklyMetric.total(workouts: List<Workout>): Double = when (this) {
+    WeeklyMetric.Volume -> workouts.sumOf { it.volumeKg }
+    WeeklyMetric.Workouts -> workouts.size.toDouble()
+    WeeklyMetric.Sets -> workouts.sumOf { it.completedSets.size }.toDouble()
+}
+
+/** A month for chart labels, such as "Nov 2026". */
+fun formatMonth(date: LocalDate): String = date.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.getDefault()))
 
 fun WeeklyMetric.format(value: Double, unit: WeightUnit): String = when (this) {
     WeeklyMetric.Volume -> formatVolume(value, unit)

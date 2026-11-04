@@ -170,7 +170,11 @@ class RoutineEditorViewModel(
 
     fun addExercise(exerciseId: String) {
         val exercise = exercisesById[exerciseId] ?: return
-        exercises = exercises + DraftExercise(nextKey++, exercise, "3", "8", "12")
+        exercises = exercises + if (exercise.isTimed) {
+            DraftExercise(nextKey++, exercise, "3", "", "")
+        } else {
+            DraftExercise(nextKey++, exercise, "3", "8", "12")
+        }
         hasChanges = true
     }
 

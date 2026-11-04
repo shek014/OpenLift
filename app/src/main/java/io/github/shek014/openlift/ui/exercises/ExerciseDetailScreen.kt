@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,6 +47,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.formatDate
 import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.ui.LocalWeightUnit
@@ -57,10 +59,12 @@ import io.github.shek014.openlift.ui.body.muscleEmphasis
 @Composable
 fun ExerciseDetailScreen(
     onBack: () -> Unit,
+    onEdit: (exerciseId: String) -> Unit,
     viewModel: ExerciseDetailViewModel = viewModel(factory = ExerciseDetailViewModel.Factory),
 ) {
     val details by viewModel.details.collectAsStateWithLifecycle()
     val log by viewModel.log.collectAsStateWithLifecycle()
+    var confirmingDelete by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -68,6 +72,14 @@ fun ExerciseDetailScreen(
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+            actions = {
+                details?.exercise?.takeIf { it.isCustom && !it.isArchived }?.let { exercise ->
+                    TextButton(onClick = { onEdit(exercise.id) }) { Text("Edit") }
+                    TextButton(onClick = { confirmingDelete = true }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
         )
@@ -86,6 +98,26 @@ fun ExerciseDetailScreen(
                 LogSection(log)
             }
         }
+    }
+
+    if (confirmingDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmingDelete = false },
+            title = { Text("Delete this exercise?") },
+            text = { Text("It won't appear in your lists any more. Workouts you've already logged with it are kept.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmingDelete = false
+                        viewModel.deleteCustomExercise()
+                        onBack()
+                    },
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirmingDelete = false }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -199,6 +231,7 @@ private fun MuscleLine(label: String, muscles: String, color: Color) {
 
 @Composable
 private fun HowToSection(steps: List<String>) {
+    if (steps.isEmpty()) return
     SectionTitle("How to")
     Column(
         modifier = Modifier.padding(16.dp),
@@ -228,6 +261,7 @@ private fun ProgressSection(log: List<LoggedSet>) {
     }
     SectionTitle("Personal records")
     PersonalRecordsList(log)
+    RepBestsDropdown(log)
 }
 
 @Composable
@@ -258,7 +292,7 @@ private fun LogSection(log: List<LoggedSet>) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             sets.forEachIndexed { index, set ->
-                Text("${index + 1}.  ${formatSet(set.weightKg, set.reps, unit)}", style = MaterialTheme.typography.bodyMedium)
+                Text("${index + 1}.  ${formatSet(set.weightKg, set.reps, unit, set.durationSeconds)}${setTypeSuffix(set.setType)}", style = MaterialTheme.typography.bodyMedium)
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -274,6 +308,8 @@ private fun LogSection(log: List<LoggedSet>) {
         }
     }
 }
+
+private fun setTypeSuffix(type: SetType) = if (type == SetType.Normal) "" else " (${type.label})"
 
 /** How many workouts the log shows at first, so that a long history doesn't bury the page. */
 private const val RecentLogWorkouts = 5

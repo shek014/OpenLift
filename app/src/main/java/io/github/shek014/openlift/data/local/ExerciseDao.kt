@@ -19,6 +19,9 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises WHERE id = :id")
     fun observeById(id: String): Flow<ExerciseWithMuscles?>
 
+    @Query("UPDATE exercises SET isArchived = 1 WHERE id = :id AND isCustom = 1")
+    suspend fun archive(id: String)
+
     @Upsert
     suspend fun upsertExercises(exercises: List<ExerciseEntity>)
 

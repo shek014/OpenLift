@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import io.github.shek014.openlift.data.model.SetType
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,6 +18,10 @@ interface WorkoutDao {
     fun observeWorkout(id: Long): Flow<WorkoutWithExercises?>
 
     @Transaction
+    @Query("SELECT * FROM workouts WHERE id = :id")
+    suspend fun workoutOnce(id: Long): WorkoutWithExercises?
+
+    @Transaction
     @Query("SELECT * FROM workouts WHERE finishedAt IS NOT NULL ORDER BY finishedAt DESC")
     fun observeFinishedWorkouts(): Flow<List<WorkoutWithExercises>>
 
@@ -24,11 +29,12 @@ interface WorkoutDao {
     @Query(
         """
         SELECT w.id AS workoutId, w.finishedAt AS finishedAt, e.exerciseId AS exerciseId,
-            s.weightKg AS weightKg, s.reps AS reps
+            s.weightKg AS weightKg, s.reps AS reps, s.durationSeconds AS durationSeconds, s.setType AS setType
         FROM workout_sets s
         JOIN workout_exercises e ON s.workoutExerciseId = e.id
         JOIN workouts w ON e.workoutId = w.id
-        WHERE w.finishedAt IS NOT NULL AND s.completed = 1 AND s.reps IS NOT NULL
+        WHERE w.finishedAt IS NOT NULL AND s.completed = 1 AND s.setType != 'Warmup'
+            AND (s.reps IS NOT NULL OR s.durationSeconds IS NOT NULL)
             AND e.exerciseId IN (:exerciseIds)
         ORDER BY w.finishedAt DESC, e.position, s.position
         """,
@@ -40,7 +46,7 @@ interface WorkoutDao {
         SELECT DISTINCT e.exerciseId FROM workout_exercises e
         JOIN workouts w ON e.workoutId = w.id
         JOIN workout_sets s ON s.workoutExerciseId = e.id
-        WHERE w.finishedAt >= :since AND s.completed = 1
+        WHERE w.finishedAt >= :since AND s.completed = 1 AND s.setType != 'Warmup'
         """,
     )
     fun observeExerciseIdsFinishedSince(since: Long): Flow<List<String>>
@@ -51,7 +57,7 @@ interface WorkoutDao {
         SELECT e.exerciseId FROM workout_exercises e
         JOIN workouts w ON e.workoutId = w.id
         JOIN workout_sets s ON s.workoutExerciseId = e.id
-        WHERE w.finishedAt IS NOT NULL AND s.completed = 1
+        WHERE w.finishedAt IS NOT NULL AND s.completed = 1 AND s.setType != 'Warmup'
         GROUP BY e.exerciseId
         ORDER BY MAX(w.finishedAt) DESC
         LIMIT :limit
@@ -90,14 +96,60 @@ interface WorkoutDao {
     @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId")
     suspend fun nextSetPosition(workoutExerciseId: Long): Int
 
+    @Query("SELECT COALESCE(MIN(position), 0) FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId")
+    suspend fun firstSetPosition(workoutExerciseId: Long): Int
+
+    /** Puts warm-up sets ahead of the exercise's other sets, ready to check off. */
+    @Transaction
+    suspend fun addWarmupSets(workoutExerciseId: Long, sets: List<Pair<Double, Int>>) {
+        val first = firstSetPosition(workoutExerciseId)
+        sets.forEachIndexed { index, (weightKg, reps) ->
+            insertSet(
+                WorkoutSetEntity(
+                    workoutExerciseId = workoutExerciseId,
+                    position = first - sets.size + index,
+                    weightKg = weightKg,
+                    reps = reps,
+                    setType = SetType.Warmup,
+                ),
+            )
+        }
+    }
+
     @Query("UPDATE workout_sets SET weightKg = :weightKg WHERE id = :setId")
     suspend fun updateWeight(setId: Long, weightKg: Double?)
 
     @Query("UPDATE workout_sets SET reps = :reps WHERE id = :setId")
     suspend fun updateReps(setId: Long, reps: Int?)
 
-    @Query("UPDATE workout_sets SET weightKg = :weightKg, reps = :reps, completed = 1 WHERE id = :setId")
-    suspend fun completeSet(setId: Long, weightKg: Double?, reps: Int)
+    @Query(
+        """
+        UPDATE workout_sets
+        SET weightKg = :weightKg, reps = :reps, durationSeconds = :durationSeconds, completed = 1
+        WHERE id = :setId
+        """,
+    )
+    suspend fun completeSet(setId: Long, weightKg: Double?, reps: Int?, durationSeconds: Int?)
+
+    @Query("UPDATE workout_sets SET durationSeconds = :seconds WHERE id = :setId")
+    suspend fun updateDuration(setId: Long, seconds: Int?)
+
+    @Query("UPDATE workout_sets SET setType = :type WHERE id = :setId")
+    suspend fun updateSetType(setId: Long, type: SetType)
+
+    /** Sets up a new workout from an old one, with its numbers filled in but nothing checked off. */
+    @Transaction
+    suspend fun copyWorkout(source: WorkoutWithExercises, startedAt: Long): Boolean {
+        if (activeWorkoutId() != null) return false
+        val workoutId = insertWorkout(WorkoutEntity(startedAt = startedAt, name = source.workout.name))
+        source.exercises.sortedBy { it.workoutExercise.position }.forEach { entry ->
+            val id = insertWorkoutExercise(entry.workoutExercise.copy(id = 0, workoutId = workoutId))
+            entry.sets.sortedBy { it.position }.forEach { set ->
+                insertSet(set.copy(id = 0, workoutExerciseId = id, completed = false))
+            }
+        }
+        return true
+    }
 
     @Query("UPDATE workout_sets SET completed = 0 WHERE id = :setId")
     suspend fun uncompleteSet(setId: Long)
@@ -122,7 +174,7 @@ interface WorkoutDao {
     @Query(
         """
         DELETE FROM workout_exercises WHERE workoutId = :workoutId AND id NOT IN
-            (SELECT workoutExerciseId FROM workout_sets)
+            (SELECT workoutExerciseId FROM workout_sets WHERE setType != 'Warmup')
         """,
     )
     suspend fun deleteExercisesWithoutSets(workoutId: Long)

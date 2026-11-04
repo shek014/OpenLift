@@ -34,5 +34,6 @@ private fun Exercise.searchText(): String = buildList {
     add(name)
     add(name.replace("-", "")) // So that "pullup" finds "Pull-Up".
     add(equipment.label)
+    if (isCustom) add("custom")
     (primaryMuscles + secondaryMuscles).forEach { add(it.label) }
 }.joinToString(" ").lowercase()

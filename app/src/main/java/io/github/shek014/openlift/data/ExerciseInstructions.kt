@@ -391,6 +391,13 @@ val ExerciseInstructions: Map<String, List<String>> = mapOf(
         "Bend your knees to set the dumbbells down safely.",
     ),
 
+    "dead_hang" to listOf(
+        "Grip a pull-up bar with your hands about shoulder-width apart.",
+        "Hang with your arms straight and your feet off the floor.",
+        "Keep your shoulders active rather than letting them sink up to your ears.",
+        "Hold for as long as your grip allows, then step down with control.",
+    ),
+
     // Core
     "crunch" to listOf(
         "Lie on your back with your knees bent, or with your feet up on a bench.",

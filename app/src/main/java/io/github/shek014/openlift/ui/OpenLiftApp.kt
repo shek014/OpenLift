@@ -6,9 +6,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,12 +37,19 @@ import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.ui.body.BodyScreen
 import io.github.shek014.openlift.ui.body.MuscleArg
 import io.github.shek014.openlift.ui.body.MuscleScreen
+import io.github.shek014.openlift.ui.exercises.CustomExerciseScreen
 import io.github.shek014.openlift.ui.exercises.ExerciseDetailScreen
 import io.github.shek014.openlift.ui.exercises.ExerciseIdArg
 import io.github.shek014.openlift.ui.exercises.ExerciseListScreen
+import io.github.shek014.openlift.ui.exercises.NewExerciseId
 import io.github.shek014.openlift.ui.history.EditWorkoutScreen
 import io.github.shek014.openlift.ui.history.HistoryScreen
 import io.github.shek014.openlift.ui.history.SavedWorkoutScreen
+import io.github.shek014.openlift.ui.history.StatisticsScreen
+import io.github.shek014.openlift.ui.home.HomeScreen
+import io.github.shek014.openlift.ui.measurements.MeasurementDetailScreen
+import io.github.shek014.openlift.ui.measurements.MeasurementTypeArg
+import io.github.shek014.openlift.ui.measurements.MeasurementsScreen
 import io.github.shek014.openlift.ui.routines.NewRoutineId
 import io.github.shek014.openlift.ui.routines.RoutineDetailScreen
 import io.github.shek014.openlift.ui.routines.RoutineEditorScreen
@@ -61,12 +68,12 @@ import io.github.shek014.openlift.ui.workout.WorkoutScreen
 import io.github.shek014.openlift.ui.workout.WorkoutSummaryScreen
 import io.github.shek014.openlift.ui.workout.WorkoutViewModel
 
-private const val BodyHomeRoute = "body/home"
+private const val HomeRoute = "home/home"
+private const val BodyRoute = "body/home"
 private const val WorkoutHomeRoute = "workout/home"
 private const val HistoryHomeRoute = "history/home"
 private const val RoutinesHomeRoute = "routines/home"
 private const val EditRoutineRoute = "routines/edit/{$RoutineIdArg}"
-private const val EditWorkoutRoute = "history/edit/{$WorkoutIdArg}"
 private const val ExerciseListRoute = "exercises/list"
 
 /**
@@ -79,7 +86,7 @@ private enum class Tab(
     val icon: ImageVector,
     val homeRoute: String = route,
 ) {
-    Body("body", "Body", Icons.Filled.Accessibility, homeRoute = BodyHomeRoute),
+    Home("home", "Home", Icons.Filled.Home, homeRoute = HomeRoute),
     Workout("workout", "Workout", Icons.Filled.FitnessCenter, homeRoute = WorkoutHomeRoute),
     Routines("routines", "Routines", Icons.AutoMirrored.Filled.List, homeRoute = RoutinesHomeRoute),
     History("history", "History", Icons.Filled.History, homeRoute = HistoryHomeRoute),
@@ -105,12 +112,7 @@ fun OpenLiftApp(settings: AppSettings) {
                                 if (selected) {
                                     navController.popBackStack(tab.homeRoute, inclusive = false)
                                 } else {
-                                    navController.navigate(tab.route) {
-                                        // Keep one copy of each tab and remember where you were in it.
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                    navController.openTab(tab)
                                 }
                             },
                             icon = { Icon(tab.icon, contentDescription = null) },
@@ -123,17 +125,38 @@ fun OpenLiftApp(settings: AppSettings) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Tab.Body.route,
+            startDestination = Tab.Home.route,
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
         ) {
-            navigation(startDestination = BodyHomeRoute, route = Tab.Body.route) {
-                composable(BodyHomeRoute) {
-                    BodyScreen(
+            navigation(startDestination = HomeRoute, route = Tab.Home.route) {
+                composable(HomeRoute) {
+                    HomeScreen(
                         onOpenSettings = { navController.navigate("body/settings") },
+                        onOpenBody = { navController.navigate(BodyRoute) },
+                        onMuscleClick = { muscle -> navController.navigate("body/muscle/${muscle.name}") },
+                        onWorkoutClick = { id -> navController.navigate("home/workout/$id") },
+                        onEditWorkout = { id -> navController.navigate("home/edit/$id") },
+                        onWorkoutCopied = { navController.openTab(Tab.Workout) },
+                    )
+                }
+                composable(BodyRoute) {
+                    BodyScreen(
+                        onBack = navController::popBackStack,
+                        onOpenMeasurements = { navController.navigate("body/measurements") },
                         onMuscleClick = { muscle -> navController.navigate("body/muscle/${muscle.name}") },
                     )
+                }
+                composable("body/measurements") {
+                    MeasurementsScreen(
+                        settings = settings,
+                        onBack = navController::popBackStack,
+                        onTypeClick = { type -> navController.navigate("body/measurements/${type.name}") },
+                    )
+                }
+                composable("body/measurements/{$MeasurementTypeArg}") {
+                    MeasurementDetailScreen(settings = settings, onBack = navController::popBackStack)
                 }
                 composable("body/settings") {
                     SettingsScreen(settings = settings, onBack = navController::popBackStack)
@@ -144,7 +167,8 @@ fun OpenLiftApp(settings: AppSettings) {
                         onExerciseClick = { id -> navController.navigate("body/exercise/$id") },
                     )
                 }
-                exerciseDetail("body/exercise", navController)
+                exerciseDetail("body/exercise", "body", navController)
+                savedWorkoutScreens("home", HomeRoute, navController)
             }
             navigation(startDestination = WorkoutHomeRoute, route = Tab.Workout.route) {
                 composable(WorkoutHomeRoute) { entry ->
@@ -164,6 +188,7 @@ fun OpenLiftApp(settings: AppSettings) {
                         title = "Add exercise",
                         recentExercises = recentExercises,
                         onBack = navController::popBackStack,
+                        onNewExercise = { navController.navigate("workout/custom-exercise/$NewExerciseId") },
                         onExerciseClick = { id ->
                             viewModel.addExercise(id)
                             navController.popBackStack()
@@ -179,7 +204,7 @@ fun OpenLiftApp(settings: AppSettings) {
                 composable("workout/summary/{$WorkoutIdArg}") {
                     WorkoutSummaryScreen(onDone = { navController.popBackStack(WorkoutHomeRoute, inclusive = false) })
                 }
-                exerciseDetail("workout/exercise", navController)
+                exerciseDetail("workout/exercise", "workout", navController)
             }
             navigation(startDestination = RoutinesHomeRoute, route = Tab.Routines.route) {
                 composable(RoutinesHomeRoute) {
@@ -197,10 +222,7 @@ fun OpenLiftApp(settings: AppSettings) {
                         },
                         onExerciseClick = { id -> navController.navigate("routines/exercise/$id") },
                         onWorkoutStarted = {
-                            navController.navigate(Tab.Workout.route) {
-                                popUpTo(navController.graph.findStartDestination().id)
-                                launchSingleTop = true
-                            }
+                            navController.openTab(Tab.Workout)
                         },
                     )
                 }
@@ -231,6 +253,7 @@ fun OpenLiftApp(settings: AppSettings) {
                         title = "Add exercise",
                         recentExercises = recentExercises,
                         onBack = navController::popBackStack,
+                        onNewExercise = { navController.navigate("routines/custom-exercise/$NewExerciseId") },
                         onExerciseClick = { id ->
                             viewModel.addExercise(id)
                             navController.popBackStack()
@@ -245,67 +268,28 @@ fun OpenLiftApp(settings: AppSettings) {
                         onBack = navController::popBackStack,
                     )
                 }
-                exerciseDetail("routines/exercise", navController)
+                exerciseDetail("routines/exercise", "routines", navController)
             }
             navigation(startDestination = HistoryHomeRoute, route = Tab.History.route) {
                 composable(HistoryHomeRoute) {
-                    HistoryScreen(onWorkoutClick = { id -> navController.navigate("history/workout/$id") })
-                }
-                composable("history/workout/{$WorkoutIdArg}") { entry ->
-                    SavedWorkoutScreen(
-                        onBack = navController::popBackStack,
-                        onEdit = {
-                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}")
-                        },
+                    HistoryScreen(
+                        onWorkoutClick = { id -> navController.navigate("history/workout/$id") },
+                        onStatistics = { navController.navigate("history/statistics") },
                     )
                 }
-                composable(EditWorkoutRoute) { entry ->
-                    EditWorkoutScreen(
-                        viewModel = editWorkoutViewModel(navController, entry),
-                        onAddExercise = {
-                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}/add")
-                        },
-                        onReorder = {
-                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}/reorder")
-                        },
-                        onExerciseClick = { id -> navController.navigate("history/exercise/$id") },
-                        onDone = { stillExists ->
-                            if (stillExists) {
-                                navController.popBackStack()
-                            } else {
-                                navController.popBackStack(HistoryHomeRoute, inclusive = false)
-                            }
-                        },
-                    )
+                composable("history/statistics") {
+                    StatisticsScreen(onBack = navController::popBackStack)
                 }
-                composable("$EditWorkoutRoute/add") { entry ->
-                    val viewModel = editWorkoutViewModel(navController, entry)
-                    val recentExercises by viewModel.recentExercises.collectAsStateWithLifecycle()
-                    ExerciseListScreen(
-                        title = "Add exercise",
-                        recentExercises = recentExercises,
-                        onBack = navController::popBackStack,
-                        onExerciseClick = { id ->
-                            viewModel.addExercise(id)
-                            navController.popBackStack()
-                        },
-                    )
-                }
-                composable("$EditWorkoutRoute/reorder") { entry ->
-                    ReorderExercisesScreen(
-                        viewModel = editWorkoutViewModel(navController, entry),
-                        onBack = navController::popBackStack,
-                    )
-                }
-                exerciseDetail("history/exercise", navController)
+                savedWorkoutScreens("history", HistoryHomeRoute, navController)
             }
             navigation(startDestination = ExerciseListRoute, route = Tab.Exercises.route) {
                 composable(ExerciseListRoute) {
                     ExerciseListScreen(
                         onExerciseClick = { id -> navController.navigate("exercises/detail/$id") },
+                        onNewExercise = { navController.navigate("exercises/custom-exercise/$NewExerciseId") },
                     )
                 }
-                exerciseDetail("exercises/detail", navController)
+                exerciseDetail("exercises/detail", "exercises", navController)
             }
         }
     }
@@ -327,14 +311,86 @@ private fun routineEditorViewModel(navController: NavController, entry: NavBackS
 
 /** The saved workout being edited, shared by the edit screen and the screens it opens. */
 @Composable
-private fun editWorkoutViewModel(navController: NavController, entry: NavBackStackEntry): SavedWorkoutViewModel {
-    val editEntry = remember(entry) { navController.getBackStackEntry(EditWorkoutRoute) }
+private fun editWorkoutViewModel(
+    navController: NavController,
+    entry: NavBackStackEntry,
+    editRoute: String,
+): SavedWorkoutViewModel {
+    val editEntry = remember(entry) { navController.getBackStackEntry(editRoute) }
     return viewModel(editEntry, factory = SavedWorkoutViewModel.Factory)
 }
 
+/** Goes to a tab, keeping one copy of each tab and remembering where you were in it. */
+private fun NavController.openTab(tab: Tab) {
+    navigate(tab.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+/** A saved workout and its editor, added to each tab that opens them so that the tab stays selected. */
+private fun NavGraphBuilder.savedWorkoutScreens(root: String, homeRoute: String, navController: NavController) {
+    val editRoute = "$root/edit/{$WorkoutIdArg}"
+    composable("$root/workout/{$WorkoutIdArg}") { entry ->
+        SavedWorkoutScreen(
+            onBack = navController::popBackStack,
+            onEdit = {
+                navController.navigate("$root/edit/${entry.arguments?.getString(WorkoutIdArg)}")
+            },
+        )
+    }
+    composable(editRoute) { entry ->
+        EditWorkoutScreen(
+            viewModel = editWorkoutViewModel(navController, entry, editRoute),
+            onAddExercise = {
+                navController.navigate("$root/edit/${entry.arguments?.getString(WorkoutIdArg)}/add")
+            },
+            onReorder = {
+                navController.navigate("$root/edit/${entry.arguments?.getString(WorkoutIdArg)}/reorder")
+            },
+            onExerciseClick = { id -> navController.navigate("$root/exercise/$id") },
+            onDone = { stillExists ->
+                if (stillExists) {
+                    navController.popBackStack()
+                } else {
+                    navController.popBackStack(homeRoute, inclusive = false)
+                }
+            },
+        )
+    }
+    composable("$editRoute/add") { entry ->
+        val viewModel = editWorkoutViewModel(navController, entry, editRoute)
+        val recentExercises by viewModel.recentExercises.collectAsStateWithLifecycle()
+        ExerciseListScreen(
+            title = "Add exercise",
+            recentExercises = recentExercises,
+            onBack = navController::popBackStack,
+            onNewExercise = { navController.navigate("$root/custom-exercise/$NewExerciseId") },
+            onExerciseClick = { id ->
+                viewModel.addExercise(id)
+                navController.popBackStack()
+            },
+        )
+    }
+    composable("$editRoute/reorder") { entry ->
+        ReorderExercisesScreen(
+            viewModel = editWorkoutViewModel(navController, entry, editRoute),
+            onBack = navController::popBackStack,
+        )
+    }
+    exerciseDetail("$root/exercise", root, navController)
+}
+
 /** The exercise page, added to each tab that opens it so that the tab stays selected. */
-private fun NavGraphBuilder.exerciseDetail(route: String, navController: NavController) {
+private fun NavGraphBuilder.exerciseDetail(route: String, root: String, navController: NavController) {
     composable("$route/{$ExerciseIdArg}") {
-        ExerciseDetailScreen(onBack = navController::popBackStack)
+        ExerciseDetailScreen(
+            onBack = navController::popBackStack,
+            onEdit = { id -> navController.navigate("$root/custom-exercise/$id") },
+        )
+    }
+    composable("$root/custom-exercise/{$ExerciseIdArg}") {
+        CustomExerciseScreen(onDone = navController::popBackStack)
     }
 }

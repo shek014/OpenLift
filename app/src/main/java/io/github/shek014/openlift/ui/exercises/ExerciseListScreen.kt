@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +53,7 @@ fun ExerciseListScreen(
     title: String = "Exercises",
     recentExercises: List<Exercise> = emptyList(),
     onBack: (() -> Unit)? = null,
+    onNewExercise: () -> Unit = {},
     viewModel: ExerciseListViewModel = viewModel(factory = ExerciseListViewModel.Factory),
 ) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
@@ -78,6 +80,11 @@ fun ExerciseListScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                }
+            },
+            actions = {
+                IconButton(onClick = onNewExercise) {
+                    Icon(Icons.Filled.Add, contentDescription = "New exercise")
                 }
             },
         )

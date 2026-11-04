@@ -6,6 +6,7 @@ import io.github.shek014.openlift.data.local.WorkoutEntity
 import io.github.shek014.openlift.data.local.WorkoutWithExercises
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.WorkoutExercise
 import io.github.shek014.openlift.data.model.WorkoutSet
@@ -57,7 +58,7 @@ class WorkoutRepository(
     /** What someone's likely to want to add next: the exercises they've done most recently. */
     val recentExercises: Flow<List<Exercise>> =
         combine(dao.observeRecentExerciseIds(RecentExerciseLimit), exercisesById) { ids, exercises ->
-            ids.mapNotNull { exercises[it] }
+            ids.mapNotNull { exercises[it] }.filterNot { it.isArchived }
         }
 
     fun exercisesFinishedSince(since: Long): Flow<List<Exercise>> =
@@ -85,13 +86,27 @@ class WorkoutRepository(
 
     suspend fun addSet(workoutExerciseId: Long) = dao.addSet(workoutExerciseId)
 
+    suspend fun addWarmupSets(workoutExerciseId: Long, sets: List<Pair<Double, Int>>) =
+        dao.addWarmupSets(workoutExerciseId, sets)
+
     suspend fun removeSet(setId: Long) = dao.deleteSet(setId)
 
     suspend fun updateWeight(setId: Long, weightKg: Double?) = dao.updateWeight(setId, weightKg)
 
     suspend fun updateReps(setId: Long, reps: Int?) = dao.updateReps(setId, reps)
 
-    suspend fun completeSet(setId: Long, weightKg: Double?, reps: Int) = dao.completeSet(setId, weightKg, reps)
+    suspend fun completeSet(setId: Long, weightKg: Double?, reps: Int?, durationSeconds: Int?) =
+        dao.completeSet(setId, weightKg, reps, durationSeconds)
+
+    suspend fun updateDuration(setId: Long, seconds: Int?) = dao.updateDuration(setId, seconds)
+
+    suspend fun updateSetType(setId: Long, type: SetType) = dao.updateSetType(setId, type)
+
+    /** Starts a workout from a past one. Returns false if there's already one in progress. */
+    suspend fun copyWorkout(id: Long): Boolean {
+        val source = dao.workoutOnce(id) ?: return false
+        return dao.copyWorkout(source, now())
+    }
 
     suspend fun uncompleteSet(setId: Long) = dao.uncompleteSet(setId)
 
@@ -130,9 +145,10 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
                 targetRepsMax = row.workoutExercise.targetRepsMax,
                 sets = row.sets
                     .sortedBy { it.position }
-                    .map { WorkoutSet(it.id, it.weightKg, it.reps, it.completed) },
+                    .map { WorkoutSet(it.id, it.weightKg, it.reps, it.completed, it.setType, it.durationSeconds) },
             )
         },
 )
 
-private fun LoggedSetRow.toLoggedSet() = LoggedSet(workoutId, finishedAt, exerciseId, weightKg, reps)
+private fun LoggedSetRow.toLoggedSet() =
+    LoggedSet(workoutId, finishedAt, exerciseId, weightKg, reps ?: 0, durationSeconds, setType)

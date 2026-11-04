@@ -15,12 +15,14 @@ import io.github.shek014.openlift.data.ExerciseRepository
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.notesToSteps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** The name of the navigation argument that says which exercise to show. */
 const val ExerciseIdArg = "exerciseId"
@@ -38,6 +40,11 @@ class ExerciseDetailViewModel(
     workoutRepository: WorkoutRepository,
 ) : ViewModel() {
     private val exerciseId: String = checkNotNull(savedStateHandle[ExerciseIdArg])
+    private val exerciseRepository = repository
+
+    fun deleteCustomExercise() {
+        viewModelScope.launch { exerciseRepository.deleteCustomExercise(exerciseId) }
+    }
 
     /** What to show about the exercise, or null until it has loaded. */
     val details: StateFlow<ExerciseDetails?> =
@@ -47,7 +54,7 @@ class ExerciseDetailViewModel(
                     ExerciseDetails(
                         exercise = it,
                         animationUri = media.animationUri(it.id),
-                        howToSteps = ExerciseInstructions[it.id].orEmpty(),
+                        howToSteps = if (it.isCustom) notesToSteps(it.notes) else ExerciseInstructions[it.id].orEmpty(),
                     )
                 }
             }

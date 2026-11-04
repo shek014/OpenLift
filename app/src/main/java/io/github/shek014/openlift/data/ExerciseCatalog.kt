@@ -111,7 +111,9 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("wrist_curl", "Wrist Curl", Dumbbell, listOf(Forearms)),
     Exercise("reverse_wrist_curl", "Reverse Wrist Curl", Dumbbell, listOf(Forearms)),
     Exercise("reverse_curl", "Reverse Curl", EzBar, listOf(Forearms), listOf(Biceps)),
-    Exercise("farmers_carry", "Farmer's Carry", Dumbbell, listOf(Forearms, Traps), listOf(Abs, Glutes)),
+    Exercise("farmers_carry", "Farmer's Carry", Dumbbell, listOf(Forearms, Traps), listOf(Abs, Glutes), isTimed = true),
+
+    Exercise("dead_hang", "Dead Hang", Bodyweight, listOf(Forearms), listOf(Lats), isTimed = true),
 
     // Core
     Exercise("crunch", "Crunch", Bodyweight, listOf(Abs)),
@@ -120,8 +122,8 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("bicycle_crunch", "Bicycle Crunch", Bodyweight, listOf(Abs, Obliques)),
     Exercise("hanging_leg_raise", "Hanging Leg Raise", Bodyweight, listOf(Abs), listOf(Obliques, Forearms)),
     Exercise("lying_leg_raise", "Lying Leg Raise", Bodyweight, listOf(Abs)),
-    Exercise("plank", "Plank", Bodyweight, listOf(Abs), listOf(Obliques, LowerBack)),
-    Exercise("side_plank", "Side Plank", Bodyweight, listOf(Obliques), listOf(Abs)),
+    Exercise("plank", "Plank", Bodyweight, listOf(Abs), listOf(Obliques, LowerBack), isTimed = true),
+    Exercise("side_plank", "Side Plank", Bodyweight, listOf(Obliques), listOf(Abs), isTimed = true),
     Exercise("russian_twist", "Russian Twist", Bodyweight, listOf(Obliques), listOf(Abs)),
     Exercise("cable_woodchop", "Cable Woodchop", Cable, listOf(Obliques), listOf(Abs)),
     Exercise("pallof_press", "Pallof Press", Cable, listOf(Obliques), listOf(Abs)),
@@ -150,7 +152,7 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("standing_calf_raise", "Standing Calf Raise", Machine, listOf(Calves)),
     Exercise("seated_calf_raise", "Seated Calf Raise", Machine, listOf(Calves)),
     Exercise("hip_adduction_machine", "Hip Adduction Machine", Machine, listOf(Adductors)),
-    Exercise("copenhagen_plank", "Copenhagen Plank", Bodyweight, listOf(Adductors), listOf(Obliques)),
+    Exercise("copenhagen_plank", "Copenhagen Plank", Bodyweight, listOf(Adductors), listOf(Obliques), isTimed = true),
     Exercise("hip_abduction_machine", "Hip Abduction Machine", Machine, listOf(Abductors), listOf(Glutes)),
     Exercise("banded_lateral_walk", "Banded Lateral Walk", Band, listOf(Abductors), listOf(Glutes)),
 )

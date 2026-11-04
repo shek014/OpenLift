@@ -1,11 +1,16 @@
 package io.github.shek014.openlift.ui.exercises
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.shek014.openlift.data.model.ChartRange
@@ -24,6 +30,8 @@ import io.github.shek014.openlift.data.model.chartValue
 import io.github.shek014.openlift.data.model.format
 import io.github.shek014.openlift.data.model.formatDate
 import io.github.shek014.openlift.data.model.formatShortDate
+import io.github.shek014.openlift.data.model.formatWeight
+import io.github.shek014.openlift.data.model.repBests
 import io.github.shek014.openlift.data.model.personalRecords
 import io.github.shek014.openlift.data.model.progressPoints
 import io.github.shek014.openlift.data.model.since
@@ -118,6 +126,59 @@ fun PersonalRecordsList(logged: List<LoggedSet>) {
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        }
+    }
+}
+
+/** The heaviest weight for each number of reps, behind a dropdown so that it stays out of the way. */
+@Composable
+fun RepBestsDropdown(logged: List<LoggedSet>) {
+    val unit = LocalWeightUnit.current
+    val bests = remember(logged) { repBests(logged) }
+    var open by rememberSaveable { mutableStateOf(false) }
+    if (bests.isEmpty()) return
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { open = !open }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Best weight for each rep count", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Icon(
+                imageVector = if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (open) "Hide personal bests" else "Show personal bests",
+            )
+        }
+        if (open) {
+            bests.forEach { best ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            text = if (best.reps == 1) "1 rep" else "${best.reps} reps",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = formatDate(best.achievedAt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text = "${formatWeight(best.weightKg, unit)} ${unit.label}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
     }
 }

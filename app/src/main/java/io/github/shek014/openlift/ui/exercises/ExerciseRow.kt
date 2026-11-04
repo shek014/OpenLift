@@ -16,7 +16,10 @@ fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
         headlineContent = { Text(exercise.name) },
         supportingContent = {
             Text(
-                text = "${exercise.equipment.label} · ${exercise.primaryMuscles.joinToString { it.label }}",
+                text = buildString {
+                    if (exercise.isCustom) append("Custom · ")
+                    append("${exercise.equipment.label} · ${exercise.primaryMuscles.joinToString { it.label }}")
+                },
                 style = MaterialTheme.typography.labelMedium,
             )
         },
