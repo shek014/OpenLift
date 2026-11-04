@@ -11,6 +11,7 @@ import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
 import io.github.shek014.openlift.data.RestTimer
+import io.github.shek014.openlift.data.RoutineRepository
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.local.OpenLiftDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,10 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
     val exerciseRepository by lazy { ExerciseRepository(database.exerciseDao(), applicationScope) }
 
     val workoutRepository by lazy { WorkoutRepository(database.workoutDao(), exerciseRepository) }
+
+    val routineRepository by lazy {
+        RoutineRepository(database.routineDao(), database.workoutDao(), exerciseRepository)
+    }
 
     val restTimer by lazy { RestTimer(this, applicationScope) }
 

@@ -26,6 +26,8 @@ data class WorkoutExercise(
     val sets: List<WorkoutSet>,
     /** How long to rest after a set: null means the default from Settings, and 0 means no timer. */
     val restSeconds: Int? = null,
+    val targetRepsMin: Int? = null,
+    val targetRepsMax: Int? = null,
 )
 
 data class Workout(
@@ -33,6 +35,8 @@ data class Workout(
     val startedAt: Long,
     val finishedAt: Long?,
     val exercises: List<WorkoutExercise>,
+    /** The name of the routine it was started from, if any. */
+    val name: String? = null,
 ) {
     /** The exercises that have something to show once unchecked sets are ignored. */
     val completedExercises: List<WorkoutExercise>
@@ -75,12 +79,13 @@ fun previousSetsByExercise(logged: List<LoggedSet>): Map<String, List<LoggedSet>
 
 /**
  * The suggestion for one set in a workout: what you did for that set last time, or if there's no
- * such set, the numbers in the set above it.
+ * such set, the numbers in the set above it, or else the low end of the routine's target.
  */
-fun setHint(sets: List<WorkoutSet>, index: Int, previous: List<LoggedSet>): SetHint? {
+fun setHint(sets: List<WorkoutSet>, index: Int, previous: List<LoggedSet>, targetReps: Int? = null): SetHint? {
     previous.getOrNull(index)?.let { return SetHint(it.weightKg, it.reps) }
     return sets.take(index).lastOrNull { it.weightKg != null || it.reps != null }
         ?.let { SetHint(it.weightKg, it.reps) }
+        ?: targetReps?.let { SetHint(null, it) }
 }
 
 /** Accepts up to four digits and two decimals while someone is typing, with . or , as the point. */

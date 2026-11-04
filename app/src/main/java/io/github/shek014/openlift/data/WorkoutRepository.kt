@@ -117,6 +117,7 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
     id = workout.id,
     startedAt = workout.startedAt,
     finishedAt = workout.finishedAt,
+    name = workout.name,
     exercises = this.exercises
         .sortedBy { it.workoutExercise.position }
         .mapNotNull { row ->
@@ -125,6 +126,8 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
                 id = row.workoutExercise.id,
                 exercise = exercise,
                 restSeconds = row.workoutExercise.restSeconds,
+                targetRepsMin = row.workoutExercise.targetRepsMin,
+                targetRepsMax = row.workoutExercise.targetRepsMax,
                 sets = row.sets
                     .sortedBy { it.position }
                     .map { WorkoutSet(it.id, it.weightKg, it.reps, it.completed) },

@@ -88,7 +88,7 @@ fun HistoryScreen(
             items(list, key = { it.id }) { workout ->
                 ListItem(
                     overlineContent = { Text(formatDate(workout.finishedAt ?: workout.startedAt)) },
-                    headlineContent = { Text(workout.completedExercises.joinToString { it.exercise.name }) },
+                    headlineContent = { Text(workout.name ?: workout.completedExercises.joinToString { it.exercise.name }) },
                     supportingContent = {
                         val sets = workout.completedSets.size
                         Text(

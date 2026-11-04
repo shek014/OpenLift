@@ -43,9 +43,18 @@ import io.github.shek014.openlift.ui.exercises.ExerciseListScreen
 import io.github.shek014.openlift.ui.history.EditWorkoutScreen
 import io.github.shek014.openlift.ui.history.HistoryScreen
 import io.github.shek014.openlift.ui.history.SavedWorkoutScreen
-import io.github.shek014.openlift.ui.screens.RoutinesScreen
+import io.github.shek014.openlift.ui.routines.NewRoutineId
+import io.github.shek014.openlift.ui.routines.RoutineDetailScreen
+import io.github.shek014.openlift.ui.routines.RoutineEditorScreen
+import io.github.shek014.openlift.ui.routines.RoutineEditorViewModel
+import io.github.shek014.openlift.ui.routines.RoutineIdArg
+import io.github.shek014.openlift.ui.routines.RoutinesScreen
+import io.github.shek014.openlift.ui.routines.SplitDetailScreen
+import io.github.shek014.openlift.ui.routines.SplitIdArg
 import io.github.shek014.openlift.ui.settings.SettingsScreen
 import io.github.shek014.openlift.ui.workout.ReorderExercisesScreen
+import io.github.shek014.openlift.ui.workout.ReorderItem
+import io.github.shek014.openlift.ui.workout.ReorderScreen
 import io.github.shek014.openlift.ui.workout.SavedWorkoutViewModel
 import io.github.shek014.openlift.ui.workout.WorkoutIdArg
 import io.github.shek014.openlift.ui.workout.WorkoutScreen
@@ -55,6 +64,8 @@ import io.github.shek014.openlift.ui.workout.WorkoutViewModel
 private const val BodyHomeRoute = "body/home"
 private const val WorkoutHomeRoute = "workout/home"
 private const val HistoryHomeRoute = "history/home"
+private const val RoutinesHomeRoute = "routines/home"
+private const val EditRoutineRoute = "routines/edit/{$RoutineIdArg}"
 private const val EditWorkoutRoute = "history/edit/{$WorkoutIdArg}"
 private const val ExerciseListRoute = "exercises/list"
 
@@ -70,7 +81,7 @@ private enum class Tab(
 ) {
     Body("body", "Body", Icons.Filled.Accessibility, homeRoute = BodyHomeRoute),
     Workout("workout", "Workout", Icons.Filled.FitnessCenter, homeRoute = WorkoutHomeRoute),
-    Routines("routines", "Routines", Icons.AutoMirrored.Filled.List),
+    Routines("routines", "Routines", Icons.AutoMirrored.Filled.List, homeRoute = RoutinesHomeRoute),
     History("history", "History", Icons.Filled.History, homeRoute = HistoryHomeRoute),
     Exercises("exercises", "Exercises", Icons.AutoMirrored.Filled.MenuBook, homeRoute = ExerciseListRoute),
 }
@@ -170,7 +181,72 @@ fun OpenLiftApp(settings: AppSettings) {
                 }
                 exerciseDetail("workout/exercise", navController)
             }
-            composable(Tab.Routines.route) { RoutinesScreen() }
+            navigation(startDestination = RoutinesHomeRoute, route = Tab.Routines.route) {
+                composable(RoutinesHomeRoute) {
+                    RoutinesScreen(
+                        onNewRoutine = { navController.navigate("routines/edit/$NewRoutineId") },
+                        onRoutineClick = { id -> navController.navigate("routines/routine/$id") },
+                        onSplitClick = { id -> navController.navigate("routines/split/$id") },
+                    )
+                }
+                composable("routines/routine/{$RoutineIdArg}") { entry ->
+                    RoutineDetailScreen(
+                        onBack = navController::popBackStack,
+                        onEdit = {
+                            navController.navigate("routines/edit/${entry.arguments?.getString(RoutineIdArg)}")
+                        },
+                        onExerciseClick = { id -> navController.navigate("routines/exercise/$id") },
+                        onWorkoutStarted = {
+                            navController.navigate(Tab.Workout.route) {
+                                popUpTo(navController.graph.findStartDestination().id)
+                                launchSingleTop = true
+                            }
+                        },
+                    )
+                }
+                composable("routines/split/{$SplitIdArg}") {
+                    SplitDetailScreen(
+                        onBack = navController::popBackStack,
+                        onExerciseClick = { id -> navController.navigate("routines/exercise/$id") },
+                        onAdded = { navController.popBackStack(RoutinesHomeRoute, inclusive = false) },
+                    )
+                }
+                composable(EditRoutineRoute) { entry ->
+                    RoutineEditorScreen(
+                        viewModel = routineEditorViewModel(navController, entry),
+                        onBack = navController::popBackStack,
+                        onAddExercise = {
+                            navController.navigate("routines/edit/${entry.arguments?.getString(RoutineIdArg)}/add")
+                        },
+                        onReorder = {
+                            navController.navigate("routines/edit/${entry.arguments?.getString(RoutineIdArg)}/reorder")
+                        },
+                        onSaved = navController::popBackStack,
+                    )
+                }
+                composable("$EditRoutineRoute/add") { entry ->
+                    val viewModel = routineEditorViewModel(navController, entry)
+                    val recentExercises by viewModel.recentExercises.collectAsStateWithLifecycle()
+                    ExerciseListScreen(
+                        title = "Add exercise",
+                        recentExercises = recentExercises,
+                        onBack = navController::popBackStack,
+                        onExerciseClick = { id ->
+                            viewModel.addExercise(id)
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable("$EditRoutineRoute/reorder") { entry ->
+                    val viewModel = routineEditorViewModel(navController, entry)
+                    ReorderScreen(
+                        items = viewModel.exercises.map { ReorderItem(it.key, it.exercise.name) },
+                        onSave = viewModel::reorder,
+                        onBack = navController::popBackStack,
+                    )
+                }
+                exerciseDetail("routines/exercise", navController)
+            }
             navigation(startDestination = HistoryHomeRoute, route = Tab.History.route) {
                 composable(HistoryHomeRoute) {
                     HistoryScreen(onWorkoutClick = { id -> navController.navigate("history/workout/$id") })
@@ -240,6 +316,13 @@ fun OpenLiftApp(settings: AppSettings) {
 private fun workoutViewModel(navController: NavController, entry: NavBackStackEntry): WorkoutViewModel {
     val workoutGraph = remember(entry) { navController.getBackStackEntry(Tab.Workout.route) }
     return viewModel(workoutGraph, factory = WorkoutViewModel.Factory)
+}
+
+/** The routine being edited, shared by the editor and the screens it opens. */
+@Composable
+private fun routineEditorViewModel(navController: NavController, entry: NavBackStackEntry): RoutineEditorViewModel {
+    val editEntry = remember(entry) { navController.getBackStackEntry(EditRoutineRoute) }
+    return viewModel(editEntry, factory = RoutineEditorViewModel.Factory)
 }
 
 /** The saved workout being edited, shared by the edit screen and the screens it opens. */

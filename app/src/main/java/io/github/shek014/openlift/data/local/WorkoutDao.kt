@@ -164,6 +164,33 @@ interface WorkoutDao {
         )
     }
 
+    /** Sets up a workout with a routine's exercises. Returns false if one's already in progress. */
+    @Transaction
+    suspend fun startWorkoutFromRoutine(
+        name: String,
+        startedAt: Long,
+        exercises: List<RoutineExerciseEntity>,
+    ): Boolean {
+        if (activeWorkoutId() != null) return false
+        val workoutId = insertWorkout(WorkoutEntity(startedAt = startedAt, name = name))
+        exercises.forEachIndexed { position, planned ->
+            val id = insertWorkoutExercise(
+                WorkoutExerciseEntity(
+                    workoutId = workoutId,
+                    exerciseId = planned.exerciseId,
+                    position = position,
+                    restSeconds = lastRestSeconds(planned.exerciseId),
+                    targetRepsMin = planned.repsMin,
+                    targetRepsMax = planned.repsMax,
+                ),
+            )
+            repeat(planned.sets) { setPosition ->
+                insertSet(WorkoutSetEntity(workoutExerciseId = id, position = setPosition))
+            }
+        }
+        return true
+    }
+
     /**
      * Keeps only what was completed. Returns false if that was nothing, in which case the whole
      * workout is deleted.

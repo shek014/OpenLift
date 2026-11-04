@@ -13,6 +13,8 @@ data class WorkoutEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val startedAt: Long,
     val finishedAt: Long? = null,
+    /** The name of the routine it was started from, if any. */
+    val name: String? = null,
 )
 
 /** An exercise as done in one workout. The same exercise can appear more than once. */
@@ -40,6 +42,9 @@ data class WorkoutExerciseEntity(
     val position: Int,
     /** How long to rest after a set: null means the default from Settings, and 0 means no timer. */
     val restSeconds: Int? = null,
+    /** The reps the routine called for, if it came from one. */
+    val targetRepsMin: Int? = null,
+    val targetRepsMax: Int? = null,
 )
 
 /** One set. Weight is always stored in kilograms, and null means no added weight. */

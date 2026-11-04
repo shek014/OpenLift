@@ -39,21 +39,32 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.shek014.openlift.data.model.WorkoutExercise
 import io.github.shek014.openlift.data.model.moved
 import kotlin.math.roundToInt
 
 private val RowHeight = 64.dp
 
-/** Drag an exercise by its handle to move it. The new order saves when it's let go. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Something that can be dragged into a new position. */
+data class ReorderItem(val id: Long, val name: String)
+
+/** Reorders the exercises of a live or saved workout. */
 @Composable
 fun ReorderExercisesScreen(viewModel: WorkoutEditorViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val saved = state?.workout?.exercises.orEmpty()
+    ReorderScreen(
+        items = state?.workout?.exercises.orEmpty().map { ReorderItem(it.id, it.exercise.name) },
+        onSave = viewModel::reorderExercises,
+        onBack = onBack,
+    )
+}
+
+/** Drag an item by its handle to move it. [onSave] gets the new order each time one is let go. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReorderScreen(items: List<ReorderItem>, onSave: (List<Long>) -> Unit, onBack: () -> Unit) {
     // The order on screen, which moves ahead of what's saved during a drag.
-    var order by remember { mutableStateOf<List<WorkoutExercise>?>(null) }
-    val exercises = order ?: saved
+    var order by remember { mutableStateOf<List<ReorderItem>?>(null) }
+    val shown = order ?: items
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -69,20 +80,20 @@ fun ReorderExercisesScreen(viewModel: WorkoutEditorViewModel, onBack: () -> Unit
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
-            exercises.forEachIndexed { index, exercise ->
-                key(exercise.id) {
+            shown.forEachIndexed { index, item ->
+                key(item.id) {
                     ReorderRow(
-                        name = exercise.exercise.name,
+                        name = item.name,
                         canMoveUp = index > 0,
-                        canMoveDown = index < exercises.lastIndex,
+                        canMoveDown = index < shown.lastIndex,
                         onMove = { by ->
-                            val current = order ?: saved
-                            val from = current.indexOfFirst { it.id == exercise.id }
+                            val current = order ?: items
+                            val from = current.indexOfFirst { it.id == item.id }
                             val updated = current.moved(from, from + by)
                             order = updated
                             updated != current
                         },
-                        onDrop = { (order ?: saved).let { list -> viewModel.reorderExercises(list.map { it.id }) } },
+                        onDrop = { onSave((order ?: items).map { it.id }) },
                     )
                 }
             }

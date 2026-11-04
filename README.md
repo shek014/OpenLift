@@ -6,11 +6,12 @@
 ![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)
 ![Status: early development](https://img.shields.io/badge/Status-early%20development-orange.svg)
 
-> **OpenLift is in early development.** You can log workouts and look back through them, but routines and progress graphs aren't built yet. There are no releases to download so far.
+> **OpenLift is in early development.** You can build routines, log workouts and look back through them, but progress graphs aren't built yet. There are no releases to download so far.
 
 ## What works today
 
 - **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
+- **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
 - **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
 - **History:** look back through finished workouts, and edit or delete them.
 - **Exercise library:** 100 exercises, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
@@ -20,8 +21,6 @@
 
 ## What's planned
 
-- **Build routines:** save your own workouts so you can start them in one tap.
-- **Follow a split:** start from a recommended split such as Upper/Lower, Push/Pull/Legs or Full Body.
 - **Track your progress:** view personal records and progress graphs for each exercise and overall.
 - **Animate every exercise:** fill in the 28 exercises that don't have an animation yet.
 
@@ -33,7 +32,7 @@
 - [x] Body map for browsing exercises by muscle
 - [x] Workout logging, with a summary and rest timer
 - [x] Fill in the body map with the muscles you've trained
-- [ ] Routines and recommended splits
+- [x] Routines and recommended splits
 - [x] Workout history, with editing
 - [ ] Progress graphs and personal records
 
@@ -82,8 +81,10 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── ExerciseMedia.kt     Finds each exercise's animation
 │   ├── ExerciseRepository.kt
 │   ├── AppSettings.kt       Theme, weight unit and rest length
+│   ├── RecommendedSplits.kt The ready-made programs
 │   ├── RestTimer.kt
 │   ├── RestTimerService.kt  Keeps the timer running outside the app
+│   ├── RoutineRepository.kt
 │   ├── WorkoutRepository.kt
 │   ├── local/               Room database
 │   └── model/               Exercises, muscles and workouts
@@ -92,7 +93,7 @@ app/src/main/java/io/github/shek014/openlift/
     ├── body/                Body map and muscle screens
     ├── exercises/           Exercise library and exercise pages
     ├── history/             Past workouts and editing them
-    ├── screens/             Placeholder screens
+    ├── routines/            Routines and recommended splits
     ├── settings/            Settings
     ├── theme/               Colors and theming
     └── workout/             Workout logging and summary

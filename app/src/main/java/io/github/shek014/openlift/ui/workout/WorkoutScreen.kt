@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -69,12 +71,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.SetHint
 import io.github.shek014.openlift.data.model.WeightUnit
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.WorkoutExercise
 import io.github.shek014.openlift.data.model.WorkoutSet
 import io.github.shek014.openlift.data.model.formatDuration
+import io.github.shek014.openlift.data.model.formatRepsTarget
 import io.github.shek014.openlift.data.model.formatRest
 import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.data.model.formatWeight
@@ -86,6 +90,7 @@ import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
 import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
+import io.github.shek014.openlift.ui.routines.summary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -103,7 +108,12 @@ fun WorkoutScreen(
     val current = state ?: return
     val workout = current.workout
     if (workout == null) {
-        NoWorkout(onStart = viewModel::startWorkout)
+        val routines by viewModel.routines.collectAsStateWithLifecycle()
+        NoWorkout(
+            routines = routines,
+            onStart = viewModel::startWorkout,
+            onStartRoutine = viewModel::startRoutine,
+        )
     } else {
         ActiveWorkout(
             workout = workout,
@@ -121,20 +131,47 @@ fun WorkoutScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NoWorkout(onStart: () -> Unit) {
+private fun NoWorkout(
+    routines: List<Routine>,
+    onStart: () -> Unit,
+    onStartRoutine: (Long) -> Unit,
+) {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("Workout") })
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = "Add exercises and log your sets as you train. Everything saves as you go, so it's safe to leave the app.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
-                Text("Start workout")
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "start") {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        text = "Add exercises and log your sets as you train. Everything saves as you go, so it's safe to leave the app.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
+                        Text("Start empty workout")
+                    }
+                }
+            }
+            if (routines.isNotEmpty()) {
+                item(key = "routines-title") {
+                    Text(
+                        text = "Start a routine",
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
+                }
+                items(routines, key = { "routine-${it.id}" }) { routine ->
+                    ListItem(
+                        headlineContent = { Text(routine.name) },
+                        supportingContent = { Text(routine.summary(), style = MaterialTheme.typography.labelMedium) },
+                        modifier = Modifier.clickable { onStartRoutine(routine.id) },
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
         }
     }
@@ -191,7 +228,18 @@ private fun ActiveWorkout(
         workout = workout,
         previousSets = previousSets,
         viewModel = viewModel,
-        title = { ElapsedTime(workout.startedAt) },
+        title = {
+            Column {
+                ElapsedTime(workout.startedAt)
+                workout.name?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
         defaultRestSeconds = defaultRestSeconds,
         actions = {
             TextButton(
@@ -396,6 +444,14 @@ private fun LazyListScope.exerciseSection(
                     onChange = { viewModel.updateRestSeconds(entry.id, it) },
                 )
             }
+            formatRepsTarget(entry.targetRepsMin, entry.targetRepsMax)?.let { target ->
+                Text(
+                    text = "Target: $target reps",
+                    modifier = Modifier.padding(start = 20.dp, bottom = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             SetColumns(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 number = { ColumnLabel("Set") },
@@ -411,7 +467,7 @@ private fun LazyListScope.exerciseSection(
             number = index + 1,
             set = set,
             previous = previous.getOrNull(index),
-            hint = setHint(entry.sets, index, previous),
+            hint = setHint(entry.sets, index, previous, entry.targetRepsMin),
             unit = unit,
             restSeconds = restSeconds,
             viewModel = viewModel,
@@ -608,7 +664,7 @@ private fun SetRow(
 }
 
 @Composable
-private fun NumberField(
+fun NumberField(
     value: String,
     placeholder: String,
     description: String,

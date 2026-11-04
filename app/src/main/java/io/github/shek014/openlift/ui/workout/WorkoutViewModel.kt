@@ -10,9 +10,11 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.RestTimer
+import io.github.shek014.openlift.data.RoutineRepository
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.previousSetsByExercise
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,7 +71,15 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
 class WorkoutViewModel(
     repository: WorkoutRepository,
     private val restTimer: RestTimer,
+    private val routineRepository: RoutineRepository,
 ) : WorkoutEditorViewModel(repository) {
+    val routines: StateFlow<List<Routine>> =
+        routineRepository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun startRoutine(routineId: Long) {
+        viewModelScope.launch { routineRepository.startWorkout(routineId) }
+    }
+
     override val state: StateFlow<WorkoutUiState?> =
         combine(repository.activeWorkout, repository.loggedSetsForActiveWorkout) { workout, logged ->
             WorkoutUiState(workout, previousSetsByExercise(logged))
@@ -105,7 +115,7 @@ class WorkoutViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY] as OpenLiftApplication
-                WorkoutViewModel(application.workoutRepository, application.restTimer)
+                WorkoutViewModel(application.workoutRepository, application.restTimer, application.routineRepository)
             }
         }
     }
