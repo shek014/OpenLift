@@ -1,0 +1,10 @@
+The GIF files in this folder are licensed under the Creative Commons
+Attribution-ShareAlike 4.0 International license (CC BY-SA 4.0):
+https://creativecommons.org/licenses/by-sa/4.0/
+
+They are adapted from the exercise drawings by Everkinetic:
+https://github.com/everkinetic/data
+
+Changes made: the two drawings for each exercise were aligned, resized, reduced
+in color and combined into an animated GIF. tools/build_exercise_gifs.py in the
+OpenLift repository shows exactly how.
