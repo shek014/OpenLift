@@ -35,12 +35,6 @@ fun HistoryScreen() = PlaceholderScreen(
 )
 
 @Composable
-fun ExercisesScreen() = PlaceholderScreen(
-    title = "Exercises",
-    description = "Every exercise and the muscles it works, shown on a body map.",
-)
-
-@Composable
 private fun PlaceholderScreen(title: String, description: String) {
     Column(
         modifier = Modifier

@@ -6,12 +6,16 @@
 ![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)
 ![Status: early development](https://img.shields.io/badge/Status-early%20development-orange.svg)
 
-> **OpenLift isn't ready for tracking workouts yet.** The app runs and you can move between its four tabs, but the screens behind them are placeholders. There are no releases to download so far.
+> **OpenLift isn't ready for tracking workouts yet.** You can browse the exercise library, but the Workout, Routines and History tabs are still placeholders. There are no releases to download so far.
 
-## What it will do
+## What works today
+
+- **Exercise library:** 100 exercises, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
+
+## What's planned
 
 - **Log workouts:** record sets, reps and weight as you train, with a rest timer between sets.
-- **See exactly what you worked:** every exercise is linked to the muscles it trains, shown on a body map.
+- **See exactly what you worked:** the muscles for each exercise, shown on a body map.
 - **Build routines:** save your own workouts so you can start them in one tap.
 - **Follow a split:** start from a recommended split such as Upper/Lower, Push/Pull/Legs or Full Body.
 - **Track your progress:** view graphs of your overall workout history and of each exercise.
@@ -19,7 +23,7 @@
 ## Roadmap
 
 - [x] App structure and tab navigation
-- [ ] Exercise library with muscle mapping
+- [x] Exercise library with muscle mapping
 - [ ] Workout logging
 - [ ] Routines and recommended splits
 - [ ] Workout history
@@ -52,6 +56,7 @@ There's no installable release yet, so for now you'll need to build OpenLift fro
 - [Kotlin](https://kotlinlang.org/)
 - [Jetpack Compose](https://developer.android.com/compose) and Material 3 for the interface
 - [Navigation Compose](https://developer.android.com/develop/ui/compose/navigation) for moving between screens
+- [Room](https://developer.android.com/training/data-storage/room) for storing data on the device
 
 Library versions are listed in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
 
@@ -59,11 +64,24 @@ Library versions are listed in [`gradle/libs.versions.toml`](gradle/libs.version
 
 ```text
 app/src/main/java/io/github/shek014/openlift/
-├── MainActivity.kt        App entry point
+├── MainActivity.kt          App entry point
+├── OpenLiftApplication.kt   Objects shared across the app
+├── data/
+│   ├── ExerciseCatalog.kt   The built-in exercises and their muscles
+│   ├── ExerciseRepository.kt
+│   ├── local/               Room database
+│   └── model/               Exercise, Muscle and Equipment
 └── ui/
-    ├── OpenLiftApp.kt     Bottom bar and tab navigation
-    ├── screens/           Screens for each tab
-    └── theme/             Colors and theming
+    ├── OpenLiftApp.kt       Bottom bar and tab navigation
+    ├── exercises/           Exercise library screens
+    ├── screens/             Placeholder screens
+    └── theme/               Colors and theming
+```
+
+## Running the tests
+
+```bash
+./gradlew testDebugUnitTest
 ```
 
 ## Contributing

@@ -1,0 +1,214 @@
+package io.github.shek014.openlift.ui.exercises
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.shek014.openlift.data.model.Equipment
+import io.github.shek014.openlift.data.model.Exercise
+import io.github.shek014.openlift.data.model.Muscle
+import io.github.shek014.openlift.data.model.MuscleGroup
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExerciseListScreen(
+    onExerciseClick: (exerciseId: String) -> Unit,
+    viewModel: ExerciseListViewModel = viewModel(factory = ExerciseListViewModel.Factory),
+) {
+    val exercises by viewModel.exercises.collectAsStateWithLifecycle()
+    val filter = viewModel.filter
+    val focusManager = LocalFocusManager.current
+    val hideKeyboardOnScroll = remember(focusManager) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y != 0f) focusManager.clearFocus()
+                return Offset.Zero
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding(),
+    ) {
+        TopAppBar(title = { Text("Exercises") })
+        // The search and filters scroll with the list, so that the list still has room in landscape.
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(hideKeyboardOnScroll),
+        ) {
+            item(key = "search") {
+                SearchField(query = filter.query, onQueryChange = viewModel::setQuery)
+            }
+            item(key = "groups") {
+                ChipRow(
+                    items = MuscleGroup.entries,
+                    selected = filter.group,
+                    label = { it.label },
+                    onClick = viewModel::toggleGroup,
+                )
+            }
+            filter.group?.let { group ->
+                item(key = "muscles") {
+                    ChipRow(
+                        items = Muscle.entries.filter { it.group == group },
+                        selected = filter.muscle,
+                        label = { it.label },
+                        onClick = viewModel::toggleMuscle,
+                    )
+                }
+            }
+            item(key = "equipment") {
+                ChipRow(
+                    items = Equipment.entries,
+                    selected = filter.equipment,
+                    label = { it.label },
+                    onClick = viewModel::toggleEquipment,
+                )
+            }
+            exercises?.let { results ->
+                if (results.isEmpty()) {
+                    item(key = "no_results") {
+                        NoResults(
+                            onClearFilter = {
+                                focusManager.clearFocus()
+                                viewModel.clearFilter()
+                            },
+                        )
+                    }
+                } else {
+                    item(key = "count") {
+                        ResultCount(count = results.size)
+                    }
+                    items(results, key = { it.id }) { exercise ->
+                        ExerciseRow(exercise = exercise, onClick = { onExerciseClick(exercise.id) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    val focusManager = LocalFocusManager.current
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        placeholder = { Text("Search exercises") },
+        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                }
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+    )
+}
+
+/** A sideways-scrolling row of chips where at most one is selected. */
+@Composable
+private fun <T> ChipRow(
+    items: List<T>,
+    selected: T?,
+    label: (T) -> String,
+    onClick: (T) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(items) { item ->
+            FilterChip(
+                selected = item == selected,
+                onClick = { onClick(item) },
+                label = { Text(label(item)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResultCount(count: Int) {
+    Text(
+        text = if (count == 1) "1 exercise" else "$count exercises",
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(exercise.name) },
+        supportingContent = {
+            Text("${exercise.equipment.label} · ${exercise.primaryMuscles.joinToString { it.label }}")
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
+
+@Composable
+private fun NoResults(onClearFilter: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "No exercises match your search",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onClearFilter) {
+            Text("Clear search and filters")
+        }
+    }
+}
