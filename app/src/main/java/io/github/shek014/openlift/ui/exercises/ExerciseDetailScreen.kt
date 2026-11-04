@@ -43,13 +43,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.formatDate
 import io.github.shek014.openlift.data.model.formatSet
+import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.body.BodyMap
 import io.github.shek014.openlift.ui.body.muscleEmphasis
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /** One page for an exercise, read from top to bottom like a page in a training log. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -239,19 +237,19 @@ private fun LogSection(log: List<LoggedSet>) {
         )
         return
     }
-    val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    val unit = LocalWeightUnit.current
     log.groupBy { it.workoutId }.values.forEach { sets ->
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = Instant.ofEpochMilli(sets.first().finishedAt).atZone(ZoneId.systemDefault()).format(dateFormat),
+                text = formatDate(sets.first().finishedAt),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             sets.forEachIndexed { index, set ->
-                Text("${index + 1}.  ${formatSet(set.weightKg, set.reps)}", style = MaterialTheme.typography.bodyMedium)
+                Text("${index + 1}.  ${formatSet(set.weightKg, set.reps, unit)}", style = MaterialTheme.typography.bodyMedium)
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

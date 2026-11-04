@@ -10,8 +10,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,8 +33,7 @@ import io.github.shek014.openlift.data.model.MuscleGroup
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BodyScreen(
-    darkTheme: Boolean,
-    onDarkThemeChange: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit,
     onMuscleClick: (Muscle) -> Unit,
     viewModel: BodyViewModel = viewModel(factory = BodyViewModel.Factory),
 ) {
@@ -45,11 +43,8 @@ fun BodyScreen(
         TopAppBar(
             title = { Text("This week") },
             actions = {
-                IconButton(onClick = { onDarkThemeChange(!darkTheme) }) {
-                    Icon(
-                        imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                        contentDescription = if (darkTheme) "Switch to light theme" else "Switch to dark theme",
-                    )
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
                 }
             },
         )

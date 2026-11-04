@@ -35,23 +35,28 @@ import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.formatDuration
 import io.github.shek014.openlift.data.model.formatSet
+import io.github.shek014.openlift.data.model.formatVolume
+import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.body.BodyMap
 import io.github.shek014.openlift.ui.body.muscleEmphasis
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlin.math.roundToLong
-
-/** The name of the navigation argument that says which workout to show. */
-const val WorkoutIdArg = "workoutId"
+import kotlinx.coroutines.launch
 
 class WorkoutSummaryViewModel(
     savedStateHandle: SavedStateHandle,
-    repository: WorkoutRepository,
+    private val repository: WorkoutRepository,
 ) : ViewModel() {
+    private val workoutId: Long = checkNotNull(savedStateHandle.get<String>(WorkoutIdArg)).toLong()
+
     val workout: StateFlow<Workout?> =
-        repository.workout(checkNotNull(savedStateHandle.get<String>(WorkoutIdArg)).toLong())
+        repository.workout(workoutId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun deleteWorkout() {
+        viewModelScope.launch { repository.deleteWorkout(workoutId) }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -83,31 +88,31 @@ fun WorkoutSummaryScreen(
 }
 
 @Composable
-private fun WorkoutSummary(workout: Workout) {
+fun WorkoutSummary(workout: Workout) {
+    val unit = LocalWeightUnit.current
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
     ) {
-        val seconds = ((workout.finishedAt ?: workout.startedAt) - workout.startedAt) / 1000
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Stat("Time", formatDuration(seconds))
+            Stat("Time", formatDuration(workout.durationSeconds))
             Stat("Sets", workout.completedSets.size.toString())
-            Stat("Volume", "${workout.volumeKg.roundToLong()} kg")
+            Stat("Volume", formatVolume(workout.volumeKg, unit))
         }
         BodyMap(
-            emphasis = workout.exercises.map { it.exercise }.muscleEmphasis(),
+            emphasis = workout.completedExercises.map { it.exercise }.muscleEmphasis(),
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
                 .widthIn(max = 260.dp)
                 .padding(16.dp),
         )
-        workout.exercises.forEach { entry ->
+        workout.completedExercises.forEach { entry ->
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -120,7 +125,7 @@ private fun WorkoutSummary(workout: Workout) {
                 )
                 entry.sets.filter { it.completed }.forEachIndexed { index, set ->
                     Text(
-                        text = "${index + 1}.  ${formatSet(set.weightKg, set.reps)}",
+                        text = "${index + 1}.  ${formatSet(set.weightKg, set.reps, unit)}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

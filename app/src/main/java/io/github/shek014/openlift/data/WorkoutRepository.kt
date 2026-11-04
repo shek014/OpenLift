@@ -31,15 +31,26 @@ class WorkoutRepository(
     fun workout(id: Long): Flow<Workout?> =
         combine(dao.observeWorkout(id), exercisesById) { row, exercises -> row?.toWorkout(exercises) }
 
+    /** Finished workouts, newest first. */
+    val finishedWorkouts: Flow<List<Workout>> =
+        combine(dao.observeFinishedWorkouts(), exercisesById) { rows, exercises ->
+            rows.map { it.toWorkout(exercises) }
+        }
+
     /** Completed sets of these exercises from finished workouts, newest workout first. */
     fun loggedSets(exerciseIds: List<String>): Flow<List<LoggedSet>> =
         dao.observeLoggedSets(exerciseIds).map { rows -> rows.map { it.toLoggedSet() } }
 
     /** The same as [loggedSets], for whichever exercises are in the workout in progress. */
+    val loggedSetsForActiveWorkout: Flow<List<LoggedSet>> = loggedSetsFor(activeWorkout)
+
+    /** The same as [loggedSets], for whichever exercises are in this workout. */
+    fun loggedSetsInWorkout(id: Long): Flow<List<LoggedSet>> = loggedSetsFor(workout(id))
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val loggedSetsForActiveWorkout: Flow<List<LoggedSet>> =
-        activeWorkout
-            .map { workout -> workout?.exercises?.map { it.exercise.id }?.distinct().orEmpty() }
+    private fun loggedSetsFor(workout: Flow<Workout?>): Flow<List<LoggedSet>> =
+        workout
+            .map { current -> current?.exercises?.map { it.exercise.id }?.distinct().orEmpty() }
             .distinctUntilChanged()
             .flatMapLatest { loggedSets(it) }
 
@@ -56,6 +67,10 @@ class WorkoutRepository(
         val workoutId = dao.activeWorkoutId() ?: dao.insertWorkout(WorkoutEntity(startedAt = now()))
         dao.addExercise(workoutId, exerciseId)
     }
+
+    suspend fun addExerciseTo(workoutId: Long, exerciseId: String) = dao.addExercise(workoutId, exerciseId)
+
+    suspend fun reorderExercises(workoutExerciseIds: List<Long>) = dao.reorderExercises(workoutExerciseIds)
 
     suspend fun removeExercise(workoutExerciseId: Long) = dao.deleteWorkoutExercise(workoutExerciseId)
 
@@ -74,6 +89,11 @@ class WorkoutRepository(
     suspend fun discardActiveWorkout() {
         dao.activeWorkoutId()?.let { dao.deleteWorkout(it) }
     }
+
+    suspend fun deleteWorkout(id: Long) = dao.deleteWorkout(id)
+
+    /** Tidies up a saved workout after editing. Returns false if that left nothing in it. */
+    suspend fun finishEditing(id: Long): Boolean = dao.removeUncompleted(id)
 
     /** Returns the saved workout's id, or null if nothing had been completed so nothing was saved. */
     suspend fun finishActiveWorkout(): Long? {

@@ -1,11 +1,17 @@
 package io.github.shek014.openlift.ui.workout
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -54,9 +61,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.SetHint
+import io.github.shek014.openlift.data.model.WeightUnit
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.WorkoutExercise
 import io.github.shek014.openlift.data.model.WorkoutSet
@@ -67,13 +77,17 @@ import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.data.model.isValidWeightInput
 import io.github.shek014.openlift.data.model.parseReps
 import io.github.shek014.openlift.data.model.parseWeight
+import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
+import io.github.shek014.openlift.ui.LocalWeightUnit
 import kotlinx.coroutines.delay
 
 @Composable
 fun WorkoutScreen(
     viewModel: WorkoutViewModel,
+    settings: AppSettings,
     onAddExercise: () -> Unit,
+    onReorder: () -> Unit,
     onExerciseClick: (exerciseId: String) -> Unit,
     onWorkoutSaved: (workoutId: Long) -> Unit,
 ) {
@@ -90,7 +104,9 @@ fun WorkoutScreen(
             previousSets = current.previousSets,
             restSeconds = restSeconds,
             viewModel = viewModel,
+            settings = settings,
             onAddExercise = onAddExercise,
+            onReorder = onReorder,
             onExerciseClick = onExerciseClick,
             onWorkoutSaved = onWorkoutSaved,
         )
@@ -126,18 +142,36 @@ private class Confirmation(
     val onConfirm: () -> Unit,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AskForNotificationsOnce(settings: AppSettings) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (needsPermission && !settings.askedForNotifications) {
+            settings.askedForNotifications = true
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+}
+
 @Composable
 private fun ActiveWorkout(
     workout: Workout,
     previousSets: Map<String, List<LoggedSet>>,
     restSeconds: Int?,
     viewModel: WorkoutViewModel,
+    settings: AppSettings,
     onAddExercise: () -> Unit,
+    onReorder: () -> Unit,
     onExerciseClick: (String) -> Unit,
     onWorkoutSaved: (Long) -> Unit,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
+
+    AskForNotificationsOnce(settings)
 
     // So that the screen doesn't turn off in the middle of a set or a rest.
     val view = LocalView.current
@@ -146,54 +180,123 @@ private fun ActiveWorkout(
         onDispose { view.keepScreenOn = false }
     }
 
-    val confirmDiscard = {
-        confirmation = Confirmation(
-            title = "Discard this workout?",
-            message = "Everything you've logged in it will be deleted.",
-            confirmLabel = "Discard",
-            onConfirm = viewModel::discardWorkout,
-        )
-    }
+    WorkoutEditor(
+        workout = workout,
+        previousSets = previousSets,
+        viewModel = viewModel,
+        title = { ElapsedTime(workout.startedAt) },
+        actions = {
+            TextButton(
+                onClick = {
+                    val completed = workout.completedSets.size
+                    confirmation = if (completed == 0) {
+                        Confirmation(
+                            title = "Nothing to save",
+                            message = "You haven't completed any sets yet. Discard this workout?",
+                            confirmLabel = "Discard",
+                            onConfirm = viewModel::discardWorkout,
+                        )
+                    } else {
+                        Confirmation(
+                            title = "Finish workout?",
+                            message = "Saves ${setCount(completed)}. Any sets you haven't checked off won't be saved.",
+                            confirmLabel = "Finish",
+                            onConfirm = {
+                                viewModel.finishWorkout { id -> if (id != null) onWorkoutSaved(id) }
+                            },
+                        )
+                    }
+                },
+            ) {
+                Text("Finish")
+            }
+        },
+        onAddExercise = onAddExercise,
+        onReorder = onReorder,
+        onExerciseClick = onExerciseClick,
+        extraActions = {
+            TextButton(
+                onClick = {
+                    confirmation = Confirmation(
+                        title = "Discard this workout?",
+                        message = "Everything you've logged in it will be deleted.",
+                        confirmLabel = "Discard",
+                        onConfirm = viewModel::discardWorkout,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Discard workout", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        bottomBar = {
+            restSeconds?.let { seconds ->
+                RestBar(
+                    seconds = seconds,
+                    onAdjust = viewModel::adjustRest,
+                    onSkip = viewModel::skipRest,
+                )
+            }
+        },
+    )
+
+    confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
+}
+
+@Composable
+private fun ConfirmationDialog(question: Confirmation, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(question.title) },
+        text = { Text(question.message) },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    question.onConfirm()
+                },
+            ) {
+                Text(question.confirmLabel)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+/** The list of exercises and sets, used for both a live workout and editing a saved one. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorkoutEditor(
+    workout: Workout,
+    previousSets: Map<String, List<LoggedSet>>,
+    viewModel: WorkoutEditorViewModel,
+    title: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit,
+    onAddExercise: () -> Unit,
+    onReorder: () -> Unit,
+    onExerciseClick: (String) -> Unit,
+    extraActions: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
+) {
+    var confirmation by remember { mutableStateOf<Confirmation?>(null) }
+    val unit = LocalWeightUnit.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding(),
     ) {
-        TopAppBar(
-            title = { ElapsedTime(workout.startedAt) },
-            actions = {
-                TextButton(
-                    onClick = {
-                        val completed = workout.completedSets.size
-                        if (completed == 0) {
-                            confirmation = Confirmation(
-                                title = "Nothing to save",
-                                message = "You haven't completed any sets yet. Discard this workout?",
-                                confirmLabel = "Discard",
-                                onConfirm = viewModel::discardWorkout,
-                            )
-                        } else {
-                            confirmation = Confirmation(
-                                title = "Finish workout?",
-                                message = "Saves ${setCount(completed)}. Any sets you haven't checked off won't be saved.",
-                                confirmLabel = "Finish",
-                                onConfirm = {
-                                    viewModel.finishWorkout { id -> if (id != null) onWorkoutSaved(id) }
-                                },
-                            )
-                        }
-                    },
-                ) {
-                    Text("Finish")
-                }
-            },
-        )
+        TopAppBar(title = title, actions = actions)
         LazyColumn(modifier = Modifier.weight(1f)) {
             workout.exercises.forEach { entry ->
                 exerciseSection(
                     entry = entry,
                     previous = previousSets[entry.exercise.id].orEmpty(),
+                    unit = unit,
                     viewModel = viewModel,
                     onExerciseClick = onExerciseClick,
                     onRemove = {
@@ -214,43 +317,19 @@ private fun ActiveWorkout(
                     Button(onClick = onAddExercise, modifier = Modifier.fillMaxWidth()) {
                         Text("Add exercise")
                     }
-                    TextButton(onClick = confirmDiscard, modifier = Modifier.fillMaxWidth()) {
-                        Text("Discard workout", color = MaterialTheme.colorScheme.error)
+                    if (workout.exercises.size > 1) {
+                        OutlinedButton(onClick = onReorder, modifier = Modifier.fillMaxWidth()) {
+                            Text("Reorder exercises")
+                        }
                     }
+                    extraActions()
                 }
             }
         }
-        restSeconds?.let { seconds ->
-            RestBar(
-                seconds = seconds,
-                onAdjust = viewModel::adjustRest,
-                onSkip = viewModel::skipRest,
-            )
-        }
+        bottomBar()
     }
 
-    confirmation?.let { question ->
-        AlertDialog(
-            onDismissRequest = { confirmation = null },
-            title = { Text(question.title) },
-            text = { Text(question.message) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmation = null
-                        question.onConfirm()
-                    },
-                ) {
-                    Text(question.confirmLabel)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmation = null }) {
-                    Text("Cancel")
-                }
-            },
-        )
-    }
+    confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
 }
 
 private fun setCount(count: Int) = if (count == 1) "1 set" else "$count sets"
@@ -270,7 +349,8 @@ private fun ElapsedTime(startedAt: Long) {
 private fun LazyListScope.exerciseSection(
     entry: WorkoutExercise,
     previous: List<LoggedSet>,
-    viewModel: WorkoutViewModel,
+    unit: WeightUnit,
+    viewModel: WorkoutEditorViewModel,
     onExerciseClick: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -297,7 +377,7 @@ private fun LazyListScope.exerciseSection(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 number = { ColumnLabel("Set") },
                 previous = { ColumnLabel("Previous") },
-                weight = { ColumnLabel("kg", TextAlign.Center) },
+                weight = { ColumnLabel(unit.label, TextAlign.Center) },
                 reps = { ColumnLabel("Reps", TextAlign.Center) },
                 actions = {},
             )
@@ -309,6 +389,7 @@ private fun LazyListScope.exerciseSection(
             set = set,
             previous = previous.getOrNull(index),
             hint = setHint(entry.sets, index, previous),
+            unit = unit,
             viewModel = viewModel,
         )
     }
@@ -364,15 +445,18 @@ private fun SetRow(
     set: WorkoutSet,
     previous: LoggedSet?,
     hint: SetHint?,
-    viewModel: WorkoutViewModel,
+    unit: WeightUnit,
+    viewModel: WorkoutEditorViewModel,
 ) {
-    var weightText by remember(set.id) { mutableStateOf(set.weightKg?.let(::formatWeight).orEmpty()) }
+    fun shown(weightKg: Double?) = weightKg?.let { formatWeight(it, unit) }.orEmpty()
+
+    var weightText by remember(set.id, unit) { mutableStateOf(shown(set.weightKg)) }
     var repsText by remember(set.id) { mutableStateOf(set.reps?.toString().orEmpty()) }
 
     // Picks up the suggested numbers once a blank set is checked off. It leaves text like "22."
     // alone, because that already means the same weight as what's saved.
     LaunchedEffect(set.weightKg) {
-        if (parseWeight(weightText) != set.weightKg) weightText = set.weightKg?.let(::formatWeight).orEmpty()
+        if (!sameWeight(parseWeight(weightText, unit), set.weightKg)) weightText = shown(set.weightKg)
     }
     LaunchedEffect(set.reps) {
         if (parseReps(repsText) != set.reps) repsText = set.reps?.toString().orEmpty()
@@ -390,7 +474,7 @@ private fun SetRow(
         },
         previous = {
             Text(
-                text = previous?.let { formatSet(it.weightKg, it.reps) } ?: "-",
+                text = previous?.let { formatSet(it.weightKg, it.reps, unit) } ?: "-",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -398,13 +482,13 @@ private fun SetRow(
         weight = {
             NumberField(
                 value = weightText,
-                placeholder = hint?.weightKg?.let(::formatWeight).orEmpty(),
-                description = "Weight in kilograms for set $number",
+                placeholder = shown(hint?.weightKg),
+                description = "Weight for set $number",
                 keyboardType = KeyboardType.Decimal,
                 onValueChange = { text ->
                     if (isValidWeightInput(text)) {
                         weightText = text
-                        viewModel.updateWeight(set.id, parseWeight(text))
+                        viewModel.updateWeight(set.id, parseWeight(text, unit))
                     }
                 },
             )
@@ -430,7 +514,7 @@ private fun SetRow(
                     if (set.completed) {
                         viewModel.uncompleteSet(set.id)
                     } else if (repsToLog != null) {
-                        viewModel.completeSet(set.id, parseWeight(weightText) ?: hint?.weightKg, repsToLog)
+                        viewModel.completeSet(set.id, parseWeight(weightText, unit) ?: hint?.weightKg, repsToLog)
                     }
                 },
             ) {

@@ -101,6 +101,41 @@ class WorkoutTest {
     }
 
     @Test
+    fun `pounds convert both ways and read naturally`() {
+        val kg = parseWeight("135", WeightUnit.Lb)!!
+        assertEquals(61.235, kg, 0.001)
+        assertEquals("135", formatWeight(kg, WeightUnit.Lb))
+        assertEquals("137.79", formatWeight(62.5, WeightUnit.Lb))
+        assertEquals("135 lb × 5", formatSet(kg, 5, WeightUnit.Lb))
+        assertEquals("1000 lb", formatVolume(453.59237, WeightUnit.Lb))
+    }
+
+    @Test
+    fun `unchanged weights compare the same despite rounding`() {
+        assertTrue(sameWeight(parseWeight("137.79", WeightUnit.Lb), 62.5))
+        assertFalse(sameWeight(62.5, 65.0))
+        assertTrue(sameWeight(null, null))
+        assertFalse(sameWeight(null, 60.0))
+    }
+
+    @Test
+    fun `moving an item shifts the ones between`() {
+        val list = listOf("a", "b", "c", "d")
+
+        assertEquals(listOf("b", "c", "a", "d"), list.moved(0, 2))
+        assertEquals(listOf("d", "a", "b", "c"), list.moved(3, 0))
+        assertEquals(list, list.moved(1, 1))
+        assertEquals(list, list.moved(0, 9))
+        assertEquals(list, list.moved(-1, 0))
+    }
+
+    @Test
+    fun `duration comes from the start and finish times`() {
+        assertEquals(95L, Workout(1, startedAt = 5_000, finishedAt = 100_000, exercises = emptyList()).durationSeconds)
+        assertEquals(0L, Workout(1, startedAt = 5_000, finishedAt = null, exercises = emptyList()).durationSeconds)
+    }
+
+    @Test
     fun `durations are shown as minutes or hours`() {
         assertEquals("0:05", formatDuration(5))
         assertEquals("1:35", formatDuration(95))

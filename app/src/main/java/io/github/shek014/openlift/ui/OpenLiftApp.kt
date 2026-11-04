@@ -32,14 +32,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.ui.body.BodyScreen
 import io.github.shek014.openlift.ui.body.MuscleArg
 import io.github.shek014.openlift.ui.body.MuscleScreen
 import io.github.shek014.openlift.ui.exercises.ExerciseDetailScreen
 import io.github.shek014.openlift.ui.exercises.ExerciseIdArg
 import io.github.shek014.openlift.ui.exercises.ExerciseListScreen
-import io.github.shek014.openlift.ui.screens.HistoryScreen
+import io.github.shek014.openlift.ui.history.EditWorkoutScreen
+import io.github.shek014.openlift.ui.history.HistoryScreen
+import io.github.shek014.openlift.ui.history.SavedWorkoutScreen
 import io.github.shek014.openlift.ui.screens.RoutinesScreen
+import io.github.shek014.openlift.ui.settings.SettingsScreen
+import io.github.shek014.openlift.ui.workout.ReorderExercisesScreen
+import io.github.shek014.openlift.ui.workout.SavedWorkoutViewModel
 import io.github.shek014.openlift.ui.workout.WorkoutIdArg
 import io.github.shek014.openlift.ui.workout.WorkoutScreen
 import io.github.shek014.openlift.ui.workout.WorkoutSummaryScreen
@@ -47,6 +53,8 @@ import io.github.shek014.openlift.ui.workout.WorkoutViewModel
 
 private const val BodyHomeRoute = "body/home"
 private const val WorkoutHomeRoute = "workout/home"
+private const val HistoryHomeRoute = "history/home"
+private const val EditWorkoutRoute = "history/edit/{$WorkoutIdArg}"
 private const val ExerciseListRoute = "exercises/list"
 
 /**
@@ -62,15 +70,12 @@ private enum class Tab(
     Body("body", "Body", Icons.Filled.Accessibility, homeRoute = BodyHomeRoute),
     Workout("workout", "Workout", Icons.Filled.FitnessCenter, homeRoute = WorkoutHomeRoute),
     Routines("routines", "Routines", Icons.AutoMirrored.Filled.List),
-    History("history", "History", Icons.Filled.History),
+    History("history", "History", Icons.Filled.History, homeRoute = HistoryHomeRoute),
     Exercises("exercises", "Exercises", Icons.AutoMirrored.Filled.MenuBook, homeRoute = ExerciseListRoute),
 }
 
 @Composable
-fun OpenLiftApp(
-    darkTheme: Boolean,
-    onDarkThemeChange: (Boolean) -> Unit,
-) {
+fun OpenLiftApp(settings: AppSettings) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -114,10 +119,12 @@ fun OpenLiftApp(
             navigation(startDestination = BodyHomeRoute, route = Tab.Body.route) {
                 composable(BodyHomeRoute) {
                     BodyScreen(
-                        darkTheme = darkTheme,
-                        onDarkThemeChange = onDarkThemeChange,
+                        onOpenSettings = { navController.navigate("body/settings") },
                         onMuscleClick = { muscle -> navController.navigate("body/muscle/${muscle.name}") },
                     )
+                }
+                composable("body/settings") {
+                    SettingsScreen(settings = settings, onBack = navController::popBackStack)
                 }
                 composable("body/muscle/{$MuscleArg}") {
                     MuscleScreen(
@@ -131,7 +138,9 @@ fun OpenLiftApp(
                 composable(WorkoutHomeRoute) { entry ->
                     WorkoutScreen(
                         viewModel = workoutViewModel(navController, entry),
+                        settings = settings,
                         onAddExercise = { navController.navigate("workout/add") },
+                        onReorder = { navController.navigate("workout/reorder") },
                         onExerciseClick = { id -> navController.navigate("workout/exercise/$id") },
                         onWorkoutSaved = { id -> navController.navigate("workout/summary/$id") },
                     )
@@ -147,13 +156,68 @@ fun OpenLiftApp(
                         },
                     )
                 }
+                composable("workout/reorder") { entry ->
+                    ReorderExercisesScreen(
+                        viewModel = workoutViewModel(navController, entry),
+                        onBack = navController::popBackStack,
+                    )
+                }
                 composable("workout/summary/{$WorkoutIdArg}") {
                     WorkoutSummaryScreen(onDone = { navController.popBackStack(WorkoutHomeRoute, inclusive = false) })
                 }
                 exerciseDetail("workout/exercise", navController)
             }
             composable(Tab.Routines.route) { RoutinesScreen() }
-            composable(Tab.History.route) { HistoryScreen() }
+            navigation(startDestination = HistoryHomeRoute, route = Tab.History.route) {
+                composable(HistoryHomeRoute) {
+                    HistoryScreen(onWorkoutClick = { id -> navController.navigate("history/workout/$id") })
+                }
+                composable("history/workout/{$WorkoutIdArg}") { entry ->
+                    SavedWorkoutScreen(
+                        onBack = navController::popBackStack,
+                        onEdit = {
+                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}")
+                        },
+                    )
+                }
+                composable(EditWorkoutRoute) { entry ->
+                    EditWorkoutScreen(
+                        viewModel = editWorkoutViewModel(navController, entry),
+                        onAddExercise = {
+                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}/add")
+                        },
+                        onReorder = {
+                            navController.navigate("history/edit/${entry.arguments?.getString(WorkoutIdArg)}/reorder")
+                        },
+                        onExerciseClick = { id -> navController.navigate("history/exercise/$id") },
+                        onDone = { stillExists ->
+                            if (stillExists) {
+                                navController.popBackStack()
+                            } else {
+                                navController.popBackStack(HistoryHomeRoute, inclusive = false)
+                            }
+                        },
+                    )
+                }
+                composable("$EditWorkoutRoute/add") { entry ->
+                    val viewModel = editWorkoutViewModel(navController, entry)
+                    ExerciseListScreen(
+                        title = "Add exercise",
+                        onBack = navController::popBackStack,
+                        onExerciseClick = { id ->
+                            viewModel.addExercise(id)
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable("$EditWorkoutRoute/reorder") { entry ->
+                    ReorderExercisesScreen(
+                        viewModel = editWorkoutViewModel(navController, entry),
+                        onBack = navController::popBackStack,
+                    )
+                }
+                exerciseDetail("history/exercise", navController)
+            }
             navigation(startDestination = ExerciseListRoute, route = Tab.Exercises.route) {
                 composable(ExerciseListRoute) {
                     ExerciseListScreen(
@@ -171,6 +235,13 @@ fun OpenLiftApp(
 private fun workoutViewModel(navController: NavController, entry: NavBackStackEntry): WorkoutViewModel {
     val workoutGraph = remember(entry) { navController.getBackStackEntry(Tab.Workout.route) }
     return viewModel(workoutGraph, factory = WorkoutViewModel.Factory)
+}
+
+/** The saved workout being edited, shared by the edit screen and the screens it opens. */
+@Composable
+private fun editWorkoutViewModel(navController: NavController, entry: NavBackStackEntry): SavedWorkoutViewModel {
+    val editEntry = remember(entry) { navController.getBackStackEntry(EditWorkoutRoute) }
+    return viewModel(editEntry, factory = SavedWorkoutViewModel.Factory)
 }
 
 /** The exercise page, added to each tab that opens it so that the tab stays selected. */

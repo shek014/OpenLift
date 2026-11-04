@@ -23,12 +23,6 @@ fun RoutinesScreen() = PlaceholderScreen(
 )
 
 @Composable
-fun HistoryScreen() = PlaceholderScreen(
-    title = "History",
-    description = "Past workouts and graphs of your progress over time.",
-)
-
-@Composable
 private fun PlaceholderScreen(title: String, description: String) {
     Column(
         modifier = Modifier

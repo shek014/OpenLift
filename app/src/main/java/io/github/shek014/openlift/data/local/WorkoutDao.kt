@@ -16,6 +16,10 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE id = :id")
     fun observeWorkout(id: Long): Flow<WorkoutWithExercises?>
 
+    @Transaction
+    @Query("SELECT * FROM workouts WHERE finishedAt IS NOT NULL ORDER BY finishedAt DESC")
+    fun observeFinishedWorkouts(): Flow<List<WorkoutWithExercises>>
+
     /** Completed sets of these exercises from finished workouts, newest workout first. */
     @Query(
         """
@@ -35,7 +39,8 @@ interface WorkoutDao {
         """
         SELECT DISTINCT e.exerciseId FROM workout_exercises e
         JOIN workouts w ON e.workoutId = w.id
-        WHERE w.finishedAt >= :since
+        JOIN workout_sets s ON s.workoutExerciseId = e.id
+        WHERE w.finishedAt >= :since AND s.completed = 1
         """,
     )
     fun observeExerciseIdsFinishedSince(since: Long): Flow<List<String>>
@@ -101,6 +106,14 @@ interface WorkoutDao {
     @Query("UPDATE workouts SET finishedAt = :finishedAt WHERE id = :workoutId")
     suspend fun markFinished(workoutId: Long, finishedAt: Long)
 
+    @Query("UPDATE workout_exercises SET position = :position WHERE id = :workoutExerciseId")
+    suspend fun updateExercisePosition(workoutExerciseId: Long, position: Int)
+
+    @Transaction
+    suspend fun reorderExercises(workoutExerciseIds: List<Long>) {
+        workoutExerciseIds.forEachIndexed { position, id -> updateExercisePosition(id, position) }
+    }
+
     @Transaction
     suspend fun addExercise(workoutId: Long, exerciseId: String) {
         val id = insertWorkoutExercise(
@@ -128,13 +141,19 @@ interface WorkoutDao {
      * workout is deleted.
      */
     @Transaction
-    suspend fun finishWorkout(workoutId: Long, finishedAt: Long): Boolean {
+    suspend fun removeUncompleted(workoutId: Long): Boolean {
         deleteUncompletedSets(workoutId)
         deleteExercisesWithoutSets(workoutId)
         if (exerciseCount(workoutId) == 0) {
             deleteWorkout(workoutId)
             return false
         }
+        return true
+    }
+
+    @Transaction
+    suspend fun finishWorkout(workoutId: Long, finishedAt: Long): Boolean {
+        if (!removeUncompleted(workoutId)) return false
         markFinished(workoutId, finishedAt)
         return true
     }

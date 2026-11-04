@@ -7,10 +7,10 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
+import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
 import io.github.shek014.openlift.data.RestTimer
-import io.github.shek014.openlift.data.ThemePreference
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.local.OpenLiftDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +31,7 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
 
     val exerciseMedia by lazy { ExerciseMedia(assets) }
 
-    val themePreference by lazy { ThemePreference(this) }
+    val settings by lazy { AppSettings(this) }
 
     /** Teaches the image library to play GIFs. Android 9 added a faster way to do it. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
