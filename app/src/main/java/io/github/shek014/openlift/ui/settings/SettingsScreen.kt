@@ -25,14 +25,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.model.LengthUnit
 import io.github.shek014.openlift.data.model.WeightUnit
-import io.github.shek014.openlift.data.model.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
     val darkTheme by settings.darkTheme.collectAsStateWithLifecycle()
     val weightUnit by settings.weightUnit.collectAsStateWithLifecycle()
-    val restSeconds by settings.restSeconds.collectAsStateWithLifecycle()
     val lengthUnit by settings.lengthUnit.collectAsStateWithLifecycle()
     val showBmi by settings.showBmi.collectAsStateWithLifecycle()
 
@@ -82,14 +80,6 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
                 selected = showBmi,
                 label = { if (it) "Show" else "Hide" },
                 onSelect = settings::setShowBmi,
-            )
-            Choices(
-                title = "Rest timer",
-                note = "The default countdown after a set. You can change it for any exercise during a workout.",
-                choices = AppSettings.RestSecondsChoices,
-                selected = restSeconds,
-                label = { formatDuration(it.toLong()) },
-                onSelect = settings::setRestSeconds,
             )
         }
     }

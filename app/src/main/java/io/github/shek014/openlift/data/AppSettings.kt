@@ -17,14 +17,12 @@ class AppSettings(context: Context) {
     private val weightUnitState = MutableStateFlow(
         WeightUnit.entries.find { it.name == preferences.getString(WeightUnitKey, null) } ?: WeightUnit.Kg,
     )
-    private val restSecondsState = MutableStateFlow(preferences.getInt(RestSecondsKey, DefaultRestSeconds))
     private val lengthUnitState = MutableStateFlow(
         LengthUnit.entries.find { it.name == preferences.getString(LengthUnitKey, null) } ?: LengthUnit.Cm,
     )
 
     val darkTheme: StateFlow<Boolean> = darkThemeState.asStateFlow()
     val weightUnit: StateFlow<WeightUnit> = weightUnitState.asStateFlow()
-    val restSeconds: StateFlow<Int> = restSecondsState.asStateFlow()
     val lengthUnit: StateFlow<LengthUnit> = lengthUnitState.asStateFlow()
 
     private val showBmiState = MutableStateFlow(preferences.getBoolean(ShowBmiKey, false))
@@ -65,21 +63,14 @@ class AppSettings(context: Context) {
         weightUnitState.value = unit
     }
 
-    fun setRestSeconds(seconds: Int) {
-        preferences.edit { putInt(RestSecondsKey, seconds) }
-        restSecondsState.value = seconds
-    }
-
     companion object {
         const val DefaultRestSeconds = 90
-        val RestSecondsChoices = listOf(30, 60, 90, 120, 180, 300)
 
         /** The choices for a single exercise, where 0 turns the timer off. */
         val ExerciseRestSecondsChoices = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
 
         private const val DarkThemeKey = "dark_theme"
         private const val WeightUnitKey = "weight_unit"
-        private const val RestSecondsKey = "rest_seconds"
         private const val ShowBmiKey = "show_bmi"
         private const val LengthUnitKey = "length_unit"
         private const val BarWeightKey = "bar_weight_"

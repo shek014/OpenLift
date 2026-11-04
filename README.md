@@ -23,7 +23,7 @@
 - **Exercise library:** 101 exercises, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
 - **Body map:** the Body screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 72, and a log of every set you've done.
-- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, BMI, and how long the rest timer runs.
+- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, and BMI.
 
 ## What's planned
 

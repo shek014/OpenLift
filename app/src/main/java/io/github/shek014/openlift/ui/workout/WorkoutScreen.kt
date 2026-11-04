@@ -223,7 +223,6 @@ private fun ActiveWorkout(
     onWorkoutSaved: (Long) -> Unit,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
-    val defaultRestSeconds by settings.restSeconds.collectAsStateWithLifecycle()
     val latestRecord by viewModel.latestRecord.collectAsStateWithLifecycle()
 
     AskForNotificationsOnce(settings)
@@ -251,7 +250,7 @@ private fun ActiveWorkout(
                 }
             }
         },
-        defaultRestSeconds = defaultRestSeconds,
+        defaultRestSeconds = AppSettings.DefaultRestSeconds,
         settings = settings,
         actions = {
             TextButton(
