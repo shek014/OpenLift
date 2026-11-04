@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Machine-specific settings (SDK path)
+local.properties
+
+# Signing keys: never commit these
+*.jks
+*.keystore
+
+# OS
+.DS_Store
