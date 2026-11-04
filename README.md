@@ -6,7 +6,7 @@
 ![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)
 ![Status: early development](https://img.shields.io/badge/Status-early%20development-orange.svg)
 
-> **OpenLift is in early development.** All the core features on the roadmap are in place, but it hasn't had much real-world use yet. There are no releases to download so far.
+> **OpenLift is in early development.** All the core features on the roadmap are in place, but it hasn't had much real-world use yet. Test builds are on the [releases page](https://github.com/shek014/OpenLift/releases).
 
 ## What works today
 
@@ -49,14 +49,16 @@
 
 ## Try it
 
-There's no installable release yet, so for now you'll need to build OpenLift from source.
+**On your phone:** download the APK from the [latest pre-release](https://github.com/shek014/OpenLift/releases) and open it. You'll need Android 8.0 or newer, and Android may ask you to allow installs from your browser. These are early test builds, signed with a shared test key.
 
-**You'll need:**
+**From source:**
+
+You'll need:
 
 - [Android Studio](https://developer.android.com/studio)
 - A phone running Android 8.0 (API 26) or newer, or an emulator
 
-**Steps:**
+Then:
 
 1. Clone the repository:
 
