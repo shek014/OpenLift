@@ -171,7 +171,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 
 /** A sideways-scrolling row of chips where at most one is selected. */
 @Composable
-private fun <T> ChipRow(
+fun <T> ChipRow(
     items: List<T>,
     selected: T?,
     label: (T) -> String,

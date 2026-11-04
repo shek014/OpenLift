@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,15 +35,19 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.WorkoutRepository
+import io.github.shek014.openlift.data.model.NewRecord
 import io.github.shek014.openlift.data.model.Workout
+import io.github.shek014.openlift.data.model.format
 import io.github.shek014.openlift.data.model.formatDuration
 import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.data.model.formatVolume
+import io.github.shek014.openlift.data.model.newRecordsIn
 import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.body.BodyMap
 import io.github.shek014.openlift.ui.body.muscleEmphasis
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -53,6 +60,14 @@ class WorkoutSummaryViewModel(
     val workout: StateFlow<Workout?> =
         repository.workout(workoutId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The records this workout broke, with the name of each exercise. */
+    val newRecords: StateFlow<List<Pair<String, NewRecord>>> =
+        combine(repository.workout(workoutId), repository.loggedSetsInWorkout(workoutId)) { workout, logged ->
+            val finishedAt = workout?.finishedAt ?: return@combine emptyList()
+            val names = workout.exercises.associate { it.exercise.id to it.exercise.name }
+            newRecordsIn(workoutId, finishedAt, logged).map { names.getValue(it.exerciseId) to it }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun deleteWorkout() {
         viewModelScope.launch { repository.deleteWorkout(workoutId) }
@@ -77,18 +92,19 @@ fun WorkoutSummaryScreen(
     viewModel: WorkoutSummaryViewModel = viewModel(factory = WorkoutSummaryViewModel.Factory),
 ) {
     val workout by viewModel.workout.collectAsStateWithLifecycle()
+    val newRecords by viewModel.newRecords.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Workout saved") },
             actions = { TextButton(onClick = onDone) { Text("Done") } },
         )
-        workout?.let { WorkoutSummary(it) }
+        workout?.let { WorkoutSummary(it, newRecords) }
     }
 }
 
 @Composable
-fun WorkoutSummary(workout: Workout) {
+fun WorkoutSummary(workout: Workout, newRecords: List<Pair<String, NewRecord>> = emptyList()) {
     val unit = LocalWeightUnit.current
     Column(
         modifier = Modifier
@@ -112,6 +128,31 @@ fun WorkoutSummary(workout: Workout) {
                 .widthIn(max = 260.dp)
                 .padding(16.dp),
         )
+        if (newRecords.isNotEmpty()) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.EmojiEvents,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text("New personal records", style = MaterialTheme.typography.titleMedium)
+                }
+                newRecords.forEach { (name, record) ->
+                    Text(
+                        text = "$name: ${record.metric.label.lowercase()}, ${record.metric.format(record.value, unit)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
         workout.completedExercises.forEach { entry ->
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Column(

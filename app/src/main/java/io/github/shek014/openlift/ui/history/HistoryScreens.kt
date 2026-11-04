@@ -85,6 +85,16 @@ fun HistoryScreen(
             return@Column
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "progress") { OverallProgressChart(list) }
+            item(key = "workouts-title") {
+                Text(
+                    text = "Workouts",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
+            }
             items(list, key = { it.id }) { workout ->
                 ListItem(
                     overlineContent = { Text(formatDate(workout.finishedAt ?: workout.startedAt)) },
@@ -114,6 +124,7 @@ fun SavedWorkoutScreen(
     viewModel: WorkoutSummaryViewModel = viewModel(factory = WorkoutSummaryViewModel.Factory),
 ) {
     val workout by viewModel.workout.collectAsStateWithLifecycle()
+    val newRecords by viewModel.newRecords.collectAsStateWithLifecycle()
     var confirmingDelete by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -131,7 +142,7 @@ fun SavedWorkoutScreen(
                 }
             },
         )
-        workout?.let { WorkoutSummary(it) }
+        workout?.let { WorkoutSummary(it, newRecords) }
     }
 
     if (confirmingDelete) {

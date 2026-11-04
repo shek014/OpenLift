@@ -6,14 +6,15 @@
 ![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)
 ![Status: early development](https://img.shields.io/badge/Status-early%20development-orange.svg)
 
-> **OpenLift is in early development.** You can build routines, log workouts and look back through them, but progress graphs aren't built yet. There are no releases to download so far.
+> **OpenLift is in early development.** All the core features on the roadmap are in place, but it hasn't had much real-world use yet. There are no releases to download so far.
 
 ## What works today
 
 - **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
 - **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
 - **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
-- **History:** look back through finished workouts, and edit or delete them.
+- **History:** look back through finished workouts, edit or delete them, and see your volume, workouts and sets week by week.
+- **Progress:** a graph and personal records for each exercise, with new records called out when you finish a workout.
 - **Exercise library:** 100 exercises, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
 - **Body map:** the home screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 72, and a log of every set you've done.
@@ -21,7 +22,6 @@
 
 ## What's planned
 
-- **Track your progress:** view personal records and progress graphs for each exercise and overall.
 - **Animate every exercise:** fill in the 28 exercises that don't have an animation yet.
 
 ## Roadmap
@@ -34,7 +34,7 @@
 - [x] Fill in the body map with the muscles you've trained
 - [x] Routines and recommended splits
 - [x] Workout history, with editing
-- [ ] Progress graphs and personal records
+- [x] Progress graphs and personal records
 
 ## Try it
 
@@ -87,10 +87,11 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── RoutineRepository.kt
 │   ├── WorkoutRepository.kt
 │   ├── local/               Room database
-│   └── model/               Exercises, muscles and workouts
+│   └── model/               Exercises, workouts, routines and progress
 └── ui/
     ├── OpenLiftApp.kt       Bottom bar and tab navigation
     ├── body/                Body map and muscle screens
+    ├── charts/              Line and bar charts
     ├── exercises/           Exercise library and exercise pages
     ├── history/             Past workouts and editing them
     ├── routines/            Routines and recommended splits

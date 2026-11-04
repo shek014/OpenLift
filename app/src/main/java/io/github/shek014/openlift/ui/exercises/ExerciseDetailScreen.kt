@@ -22,10 +22,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,6 +82,7 @@ fun ExerciseDetailScreen(
                 ExerciseAnimation(it)
                 MusclesSection(it.exercise)
                 HowToSection(it.howToSteps)
+                ProgressSection(log)
                 LogSection(log)
             }
         }
@@ -213,12 +218,24 @@ private fun HowToSection(steps: List<String>) {
     }
 }
 
+/** Only appears once there's something to show. */
+@Composable
+private fun ProgressSection(log: List<LoggedSet>) {
+    if (log.isEmpty()) return
+    SectionTitle("Progress")
+    Column(modifier = Modifier.padding(top = 12.dp)) {
+        ExerciseProgressChart(log)
+    }
+    SectionTitle("Personal records")
+    PersonalRecordsList(log)
+}
+
 @Composable
 private fun LogSection(log: List<LoggedSet>) {
     SectionTitle("Your log")
     if (log.isEmpty()) {
         Text(
-            text = "Every set you log of this exercise will appear here.",
+            text = "Every set you log of this exercise will appear here, with your progress and personal records.",
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -226,7 +243,11 @@ private fun LogSection(log: List<LoggedSet>) {
         return
     }
     val unit = LocalWeightUnit.current
-    log.groupBy { it.workoutId }.values.forEach { sets ->
+    val workouts = remember(log) { log.groupBy { it.workoutId }.values.toList() }
+    var showAll by rememberSaveable { mutableStateOf(false) }
+    val shown = if (showAll) workouts else workouts.take(RecentLogWorkouts)
+
+    shown.forEach { sets ->
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -242,4 +263,17 @@ private fun LogSection(log: List<LoggedSet>) {
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
+    if (shown.size < workouts.size) {
+        TextButton(
+            onClick = { showAll = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            Text("Show all ${workouts.size} workouts")
+        }
+    }
 }
+
+/** How many workouts the log shows at first, so that a long history doesn't bury the page. */
+private const val RecentLogWorkouts = 5
