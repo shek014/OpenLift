@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +48,8 @@ import io.github.shek014.openlift.data.model.MuscleGroup
 @Composable
 fun ExerciseListScreen(
     onExerciseClick: (exerciseId: String) -> Unit,
+    title: String = "Exercises",
+    onBack: (() -> Unit)? = null,
     viewModel: ExerciseListViewModel = viewModel(factory = ExerciseListViewModel.Factory),
 ) {
     val exercises by viewModel.exercises.collectAsStateWithLifecycle()
@@ -66,7 +69,16 @@ fun ExerciseListScreen(
             .fillMaxSize()
             .imePadding(),
     ) {
-        TopAppBar(title = { Text("Exercises") })
+        TopAppBar(
+            title = { Text(title) },
+            navigationIcon = {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            },
+        )
         // The search and filters scroll with the list, so that the list still has room in landscape.
         LazyColumn(
             modifier = Modifier

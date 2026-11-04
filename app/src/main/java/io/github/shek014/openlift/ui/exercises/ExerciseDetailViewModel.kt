@@ -12,7 +12,9 @@ import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.ExerciseInstructions
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
+import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Exercise
+import io.github.shek014.openlift.data.model.LoggedSet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,10 +35,13 @@ class ExerciseDetailViewModel(
     savedStateHandle: SavedStateHandle,
     repository: ExerciseRepository,
     media: ExerciseMedia,
+    workoutRepository: WorkoutRepository,
 ) : ViewModel() {
+    private val exerciseId: String = checkNotNull(savedStateHandle[ExerciseIdArg])
+
     /** What to show about the exercise, or null until it has loaded. */
     val details: StateFlow<ExerciseDetails?> =
-        repository.exercise(checkNotNull(savedStateHandle[ExerciseIdArg]))
+        repository.exercise(exerciseId)
             .map { exercise ->
                 exercise?.let {
                     ExerciseDetails(
@@ -49,6 +54,11 @@ class ExerciseDetailViewModel(
             .flowOn(Dispatchers.IO) // Finding the animation reads the app's files.
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Every completed set of this exercise, newest workout first. */
+    val log: StateFlow<List<LoggedSet>> =
+        workoutRepository.loggedSets(listOf(exerciseId))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -57,6 +67,7 @@ class ExerciseDetailViewModel(
                     savedStateHandle = createSavedStateHandle(),
                     repository = application.exerciseRepository,
                     media = application.exerciseMedia,
+                    workoutRepository = application.workoutRepository,
                 )
             }
         }

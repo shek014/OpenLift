@@ -42,8 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import io.github.shek014.openlift.data.model.Exercise
+import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.ui.body.BodyMap
-import io.github.shek014.openlift.ui.body.MuscleEmphasis
+import io.github.shek014.openlift.ui.body.muscleEmphasis
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /** One page for an exercise, read from top to bottom like a page in a training log. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +59,7 @@ fun ExerciseDetailScreen(
     viewModel: ExerciseDetailViewModel = viewModel(factory = ExerciseDetailViewModel.Factory),
 ) {
     val details by viewModel.details.collectAsStateWithLifecycle()
+    val log by viewModel.log.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -74,7 +81,7 @@ fun ExerciseDetailScreen(
                 ExerciseAnimation(it)
                 MusclesSection(it.exercise)
                 HowToSection(it.howToSteps)
-                LogSection()
+                LogSection(log)
             }
         }
     }
@@ -164,13 +171,10 @@ private fun SectionTitle(title: String) {
 
 @Composable
 private fun MusclesSection(exercise: Exercise) {
-    val emphasis = exercise.secondaryMuscles.associateWith { MuscleEmphasis.Secondary } +
-        exercise.primaryMuscles.associateWith { MuscleEmphasis.Primary }
-
     SectionTitle("Muscles")
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         BodyMap(
-            emphasis = emphasis,
+            emphasis = listOf(exercise).muscleEmphasis(),
             modifier = Modifier
                 .width(260.dp)
                 .padding(16.dp),
@@ -224,12 +228,32 @@ private fun HowToSection(steps: List<String>) {
 }
 
 @Composable
-private fun LogSection() {
+private fun LogSection(log: List<LoggedSet>) {
     SectionTitle("Your log")
-    Text(
-        text = "Every set you log of this exercise will appear here, with your progress graph and personal records.",
-        modifier = Modifier.padding(16.dp),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    if (log.isEmpty()) {
+        Text(
+            text = "Every set you log of this exercise will appear here.",
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    log.groupBy { it.workoutId }.values.forEach { sets ->
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = Instant.ofEpochMilli(sets.first().finishedAt).atZone(ZoneId.systemDefault()).format(dateFormat),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            sets.forEachIndexed { index, set ->
+                Text("${index + 1}.  ${formatSet(set.weightKg, set.reps)}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
 }

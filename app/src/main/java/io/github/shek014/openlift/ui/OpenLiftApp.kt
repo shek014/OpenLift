@@ -18,8 +18,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -37,9 +40,13 @@ import io.github.shek014.openlift.ui.exercises.ExerciseIdArg
 import io.github.shek014.openlift.ui.exercises.ExerciseListScreen
 import io.github.shek014.openlift.ui.screens.HistoryScreen
 import io.github.shek014.openlift.ui.screens.RoutinesScreen
-import io.github.shek014.openlift.ui.screens.WorkoutScreen
+import io.github.shek014.openlift.ui.workout.WorkoutIdArg
+import io.github.shek014.openlift.ui.workout.WorkoutScreen
+import io.github.shek014.openlift.ui.workout.WorkoutSummaryScreen
+import io.github.shek014.openlift.ui.workout.WorkoutViewModel
 
 private const val BodyHomeRoute = "body/home"
+private const val WorkoutHomeRoute = "workout/home"
 private const val ExerciseListRoute = "exercises/list"
 
 /**
@@ -53,7 +60,7 @@ private enum class Tab(
     val homeRoute: String = route,
 ) {
     Body("body", "Body", Icons.Filled.Accessibility, homeRoute = BodyHomeRoute),
-    Workout("workout", "Workout", Icons.Filled.FitnessCenter),
+    Workout("workout", "Workout", Icons.Filled.FitnessCenter, homeRoute = WorkoutHomeRoute),
     Routines("routines", "Routines", Icons.AutoMirrored.Filled.List),
     History("history", "History", Icons.Filled.History),
     Exercises("exercises", "Exercises", Icons.AutoMirrored.Filled.MenuBook, homeRoute = ExerciseListRoute),
@@ -120,7 +127,31 @@ fun OpenLiftApp(
                 }
                 exerciseDetail("body/exercise", navController)
             }
-            composable(Tab.Workout.route) { WorkoutScreen() }
+            navigation(startDestination = WorkoutHomeRoute, route = Tab.Workout.route) {
+                composable(WorkoutHomeRoute) { entry ->
+                    WorkoutScreen(
+                        viewModel = workoutViewModel(navController, entry),
+                        onAddExercise = { navController.navigate("workout/add") },
+                        onExerciseClick = { id -> navController.navigate("workout/exercise/$id") },
+                        onWorkoutSaved = { id -> navController.navigate("workout/summary/$id") },
+                    )
+                }
+                composable("workout/add") { entry ->
+                    val viewModel = workoutViewModel(navController, entry)
+                    ExerciseListScreen(
+                        title = "Add exercise",
+                        onBack = navController::popBackStack,
+                        onExerciseClick = { id ->
+                            viewModel.addExercise(id)
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable("workout/summary/{$WorkoutIdArg}") {
+                    WorkoutSummaryScreen(onDone = { navController.popBackStack(WorkoutHomeRoute, inclusive = false) })
+                }
+                exerciseDetail("workout/exercise", navController)
+            }
             composable(Tab.Routines.route) { RoutinesScreen() }
             composable(Tab.History.route) { HistoryScreen() }
             navigation(startDestination = ExerciseListRoute, route = Tab.Exercises.route) {
@@ -133,6 +164,13 @@ fun OpenLiftApp(
             }
         }
     }
+}
+
+/** The workout's state, shared by all the workout screens so that they stay in step. */
+@Composable
+private fun workoutViewModel(navController: NavController, entry: NavBackStackEntry): WorkoutViewModel {
+    val workoutGraph = remember(entry) { navController.getBackStackEntry(Tab.Workout.route) }
+    return viewModel(workoutGraph, factory = WorkoutViewModel.Factory)
 }
 
 /** The exercise page, added to each tab that opens it so that the tab stays selected. */

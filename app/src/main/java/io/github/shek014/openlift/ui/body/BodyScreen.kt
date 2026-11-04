@@ -21,9 +21,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.shek014.openlift.data.model.Muscle
 import io.github.shek014.openlift.data.model.MuscleGroup
 
@@ -34,7 +37,10 @@ fun BodyScreen(
     darkTheme: Boolean,
     onDarkThemeChange: (Boolean) -> Unit,
     onMuscleClick: (Muscle) -> Unit,
+    viewModel: BodyViewModel = viewModel(factory = BodyViewModel.Factory),
 ) {
+    val trainedThisWeek by viewModel.trainedThisWeek.collectAsStateWithLifecycle()
+
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("This week") },
@@ -53,14 +59,14 @@ fun BodyScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Text(
-                text = "Tap a muscle to see its exercises. The muscles you train will fill in here once you can log workouts.",
+                text = "Muscles you've trained this week are filled in. Tap any muscle to see its exercises.",
                 modifier = Modifier.padding(horizontal = 16.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 BodyMap(
-                    emphasis = emptyMap(),
+                    emphasis = trainedThisWeek,
                     onMuscleClick = onMuscleClick,
                     modifier = Modifier
                         .widthIn(max = 420.dp)

@@ -17,12 +17,6 @@ import io.github.shek014.openlift.ui.theme.OpenLiftTheme
 // Temporary screens. Each one gets replaced by the real feature as we build it.
 
 @Composable
-fun WorkoutScreen() = PlaceholderScreen(
-    title = "Workout",
-    description = "Start an empty workout or one of your routines, then log sets, reps and weight.",
-)
-
-@Composable
 fun RoutinesScreen() = PlaceholderScreen(
     title = "Routines",
     description = "Your saved routines, plus ready-made splits like Upper/Lower and Push/Pull/Legs.",
@@ -56,6 +50,6 @@ private fun PlaceholderScreen(title: String, description: String) {
 
 @Preview(showBackground = true)
 @Composable
-private fun WorkoutScreenPreview() {
-    OpenLiftTheme { WorkoutScreen() }
+private fun RoutinesScreenPreview() {
+    OpenLiftTheme { RoutinesScreen() }
 }

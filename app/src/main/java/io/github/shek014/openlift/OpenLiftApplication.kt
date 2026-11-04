@@ -9,7 +9,9 @@ import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
+import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.ThemePreference
+import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.local.OpenLiftDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,10 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
     private val database by lazy { OpenLiftDatabase.create(this) }
 
     val exerciseRepository by lazy { ExerciseRepository(database.exerciseDao(), applicationScope) }
+
+    val workoutRepository by lazy { WorkoutRepository(database.workoutDao(), exerciseRepository) }
+
+    val restTimer by lazy { RestTimer(this, applicationScope) }
 
     val exerciseMedia by lazy { ExerciseMedia(assets) }
 
