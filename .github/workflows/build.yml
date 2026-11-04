@@ -34,12 +34,28 @@ jobs:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
-            mkdir -p ~/.android
-            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+            # Say exactly where the key is. The build tools' default location varies by machine, and
+            # if they don't find a key they quietly make a new one.
+            key_folder="$RUNNER_TEMP/android"
+            mkdir -p "$key_folder"
+            echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$key_folder/debug.keystore"
+            echo "ANDROID_USER_HOME=$key_folder" >> "$GITHUB_ENV"
           fi
 
       - name: Run tests and build debug APK
         run: ./gradlew testDebugUnitTest assembleDebug --stacktrace
+
+      - name: Check the APK uses the shared key
+        if: env.ANDROID_USER_HOME != ''
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          expected="$(keytool -list -v -keystore "$ANDROID_USER_HOME/debug.keystore" -storepass android -alias androiddebugkey \
+            | sed -n 's/.*SHA256: //p' | tr -d ':' | tr 'A-F' 'a-f')"
+          actual="$("$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk \
+            | sed -n 's/.*certificate SHA-256 digest: //p')"
+          echo "Expected $expected"
+          echo "Actual   $actual"
+          [ -n "$expected" ] && [ "$expected" = "$actual" ]
 
       - name: Name the APK
         run: mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/openlift-debug-${GITHUB_SHA::7}.apk"
