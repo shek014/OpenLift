@@ -66,7 +66,7 @@ fun SettingsScreen(settings: AppSettings, onBack: () -> Unit) {
             )
             Choices(
                 title = "Rest timer",
-                note = "How long to count down after you complete a set.",
+                note = "The default countdown after a set. You can change it for any exercise during a workout.",
                 choices = AppSettings.RestSecondsChoices,
                 selected = restSeconds,
                 label = { formatDuration(it.toLong()) },

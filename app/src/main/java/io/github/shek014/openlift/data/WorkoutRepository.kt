@@ -54,6 +54,12 @@ class WorkoutRepository(
             .distinctUntilChanged()
             .flatMapLatest { loggedSets(it) }
 
+    /** What someone's likely to want to add next: the exercises they've done most recently. */
+    val recentExercises: Flow<List<Exercise>> =
+        combine(dao.observeRecentExerciseIds(RecentExerciseLimit), exercisesById) { ids, exercises ->
+            ids.mapNotNull { exercises[it] }
+        }
+
     fun exercisesFinishedSince(since: Long): Flow<List<Exercise>> =
         combine(dao.observeExerciseIdsFinishedSince(since), exercisesById) { ids, exercises ->
             ids.mapNotNull { exercises[it] }
@@ -71,6 +77,9 @@ class WorkoutRepository(
     suspend fun addExerciseTo(workoutId: Long, exerciseId: String) = dao.addExercise(workoutId, exerciseId)
 
     suspend fun reorderExercises(workoutExerciseIds: List<Long>) = dao.reorderExercises(workoutExerciseIds)
+
+    suspend fun updateRestSeconds(workoutExerciseId: Long, seconds: Int) =
+        dao.updateRestSeconds(workoutExerciseId, seconds)
 
     suspend fun removeExercise(workoutExerciseId: Long) = dao.deleteWorkoutExercise(workoutExerciseId)
 
@@ -102,6 +111,8 @@ class WorkoutRepository(
     }
 }
 
+private const val RecentExerciseLimit = 6
+
 private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = Workout(
     id = workout.id,
     startedAt = workout.startedAt,
@@ -113,6 +124,7 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
             WorkoutExercise(
                 id = row.workoutExercise.id,
                 exercise = exercise,
+                restSeconds = row.workoutExercise.restSeconds,
                 sets = row.sets
                     .sortedBy { it.position }
                     .map { WorkoutSet(it.id, it.weightKg, it.reps, it.completed) },

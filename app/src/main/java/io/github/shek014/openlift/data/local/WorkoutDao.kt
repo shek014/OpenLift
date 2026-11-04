@@ -45,6 +45,33 @@ interface WorkoutDao {
     )
     fun observeExerciseIdsFinishedSince(since: Long): Flow<List<String>>
 
+    /** The exercises from finished workouts, most recently done first. */
+    @Query(
+        """
+        SELECT e.exerciseId FROM workout_exercises e
+        JOIN workouts w ON e.workoutId = w.id
+        JOIN workout_sets s ON s.workoutExerciseId = e.id
+        WHERE w.finishedAt IS NOT NULL AND s.completed = 1
+        GROUP BY e.exerciseId
+        ORDER BY MAX(w.finishedAt) DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentExerciseIds(limit: Int): Flow<List<String>>
+
+    /** The rest time last chosen for this exercise, if one ever was. */
+    @Query(
+        """
+        SELECT restSeconds FROM workout_exercises
+        WHERE exerciseId = :exerciseId AND restSeconds IS NOT NULL
+        ORDER BY id DESC LIMIT 1
+        """,
+    )
+    suspend fun lastRestSeconds(exerciseId: String): Int?
+
+    @Query("UPDATE workout_exercises SET restSeconds = :restSeconds WHERE id = :workoutExerciseId")
+    suspend fun updateRestSeconds(workoutExerciseId: Long, restSeconds: Int)
+
     @Query("SELECT id FROM workouts WHERE finishedAt IS NULL LIMIT 1")
     suspend fun activeWorkoutId(): Long?
 
@@ -121,6 +148,7 @@ interface WorkoutDao {
                 workoutId = workoutId,
                 exerciseId = exerciseId,
                 position = nextExercisePosition(workoutId),
+                restSeconds = lastRestSeconds(exerciseId),
             ),
         )
         insertSet(WorkoutSetEntity(workoutExerciseId = id, position = 0))

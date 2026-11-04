@@ -38,6 +38,8 @@ data class WorkoutExerciseEntity(
     val workoutId: Long,
     val exerciseId: String,
     val position: Int,
+    /** How long to rest after a set: null means the default from Settings, and 0 means no timer. */
+    val restSeconds: Int? = null,
 )
 
 /** One set. Weight is always stored in kilograms, and null means no added weight. */

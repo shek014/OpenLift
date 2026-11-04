@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -104,17 +103,6 @@ private fun inkOnPage(): ColorFilter {
     val paper = MaterialTheme.colorScheme.background
     return remember(ink, paper) { inkAndPaperFilter(ink, paper) }
 }
-
-private fun inkAndPaperFilter(ink: Color, paper: Color) = ColorFilter.colorMatrix(
-    ColorMatrix(
-        floatArrayOf(
-            paper.red - ink.red, 0f, 0f, 0f, ink.red * 255f,
-            0f, paper.green - ink.green, 0f, 0f, ink.green * 255f,
-            0f, 0f, paper.blue - ink.blue, 0f, ink.blue * 255f,
-            0f, 0f, 0f, 1f, 0f,
-        ),
-    ),
-)
 
 /** Shows nothing for exercises that don't have an animation yet. */
 @Composable

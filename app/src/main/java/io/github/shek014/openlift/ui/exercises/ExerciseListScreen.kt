@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +50,7 @@ import io.github.shek014.openlift.data.model.MuscleGroup
 fun ExerciseListScreen(
     onExerciseClick: (exerciseId: String) -> Unit,
     title: String = "Exercises",
+    recentExercises: List<Exercise> = emptyList(),
     onBack: (() -> Unit)? = null,
     viewModel: ExerciseListViewModel = viewModel(factory = ExerciseListViewModel.Factory),
 ) {
@@ -125,8 +127,14 @@ fun ExerciseListScreen(
                         )
                     }
                 } else {
-                    item(key = "count") {
-                        ResultCount(count = results.size)
+                    // Recent exercises only make sense before someone has started narrowing things down.
+                    val showRecent = recentExercises.isNotEmpty() && filter == ExerciseFilter()
+                    if (showRecent) {
+                        item(key = "recent-title") { ListSectionTitle("Recent") }
+                        items(recentExercises, key = { "recent-${it.id}" }) { exercise ->
+                            ExerciseRow(exercise = exercise, onClick = { onExerciseClick(exercise.id) })
+                        }
+                        item(key = "all-title") { ListSectionTitle("All exercises") }
                     }
                     items(results, key = { it.id }) { exercise ->
                         ExerciseRow(exercise = exercise, onClick = { onExerciseClick(exercise.id) })
@@ -184,13 +192,14 @@ private fun <T> ChipRow(
 }
 
 @Composable
-private fun ResultCount(count: Int) {
+private fun ListSectionTitle(title: String) {
     Text(
-        text = if (count == 1) "1 exercise" else "$count exercises",
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        text = title,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
     )
+    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
 }
 
 @Composable

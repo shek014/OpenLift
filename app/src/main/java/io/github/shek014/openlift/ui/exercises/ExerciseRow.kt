@@ -20,6 +20,7 @@ fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
                 style = MaterialTheme.typography.labelMedium,
             )
         },
+        leadingContent = { ExerciseThumbnail(exercise.id) },
         modifier = Modifier.clickable(onClick = onClick),
     )
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

@@ -9,9 +9,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
-import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.WorkoutRepository
+import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.previousSetsByExercise
@@ -34,6 +34,10 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
     /** The workout being edited, or null until it has loaded. */
     abstract val state: StateFlow<WorkoutUiState?>
 
+    /** What to suggest first when adding an exercise. */
+    val recentExercises: StateFlow<List<Exercise>> =
+        repository.recentExercises.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     abstract fun addExercise(exerciseId: String)
 
     protected fun run(action: suspend WorkoutRepository.() -> Unit) {
@@ -52,7 +56,11 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
 
     fun updateReps(setId: Long, reps: Int?) = run { updateReps(setId, reps) }
 
-    open fun completeSet(setId: Long, weightKg: Double?, reps: Int) = run { completeSet(setId, weightKg, reps) }
+    /** [restSeconds] is how long to rest after this set, if a rest timer applies at all. */
+    open fun completeSet(setId: Long, weightKg: Double?, reps: Int, restSeconds: Int?) =
+        run { completeSet(setId, weightKg, reps) }
+
+    fun updateRestSeconds(workoutExerciseId: Long, seconds: Int) = run { updateRestSeconds(workoutExerciseId, seconds) }
 
     fun uncompleteSet(setId: Long) = run { uncompleteSet(setId) }
 }
@@ -61,7 +69,6 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
 class WorkoutViewModel(
     repository: WorkoutRepository,
     private val restTimer: RestTimer,
-    private val settings: AppSettings,
 ) : WorkoutEditorViewModel(repository) {
     override val state: StateFlow<WorkoutUiState?> =
         combine(repository.activeWorkout, repository.loggedSetsForActiveWorkout) { workout, logged ->
@@ -74,9 +81,9 @@ class WorkoutViewModel(
 
     override fun addExercise(exerciseId: String) = run { addExercise(exerciseId) }
 
-    override fun completeSet(setId: Long, weightKg: Double?, reps: Int) {
-        super.completeSet(setId, weightKg, reps)
-        restTimer.start(settings.restSeconds.value)
+    override fun completeSet(setId: Long, weightKg: Double?, reps: Int, restSeconds: Int?) {
+        super.completeSet(setId, weightKg, reps, restSeconds)
+        if (restSeconds != null && restSeconds > 0) restTimer.start(restSeconds) else restTimer.stop()
     }
 
     fun adjustRest(seconds: Int) = restTimer.adjust(seconds)
@@ -98,7 +105,7 @@ class WorkoutViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = this[APPLICATION_KEY] as OpenLiftApplication
-                WorkoutViewModel(application.workoutRepository, application.restTimer, application.settings)
+                WorkoutViewModel(application.workoutRepository, application.restTimer)
             }
         }
     }

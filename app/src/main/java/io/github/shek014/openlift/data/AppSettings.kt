@@ -45,6 +45,9 @@ class AppSettings(context: Context) {
         const val DefaultRestSeconds = 90
         val RestSecondsChoices = listOf(30, 60, 90, 120, 180, 300)
 
+        /** The choices for a single exercise, where 0 turns the timer off. */
+        val ExerciseRestSecondsChoices = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
+
         private const val DarkThemeKey = "dark_theme"
         private const val WeightUnitKey = "weight_unit"
         private const val RestSecondsKey = "rest_seconds"

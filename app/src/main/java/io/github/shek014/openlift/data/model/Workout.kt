@@ -24,6 +24,8 @@ data class WorkoutExercise(
     val id: Long,
     val exercise: Exercise,
     val sets: List<WorkoutSet>,
+    /** How long to rest after a set: null means the default from Settings, and 0 means no timer. */
+    val restSeconds: Int? = null,
 )
 
 data class Workout(
@@ -110,6 +112,8 @@ fun formatSet(weightKg: Double?, reps: Int?, unit: WeightUnit = WeightUnit.Kg): 
     val repsText = "× ${reps ?: "-"}"
     return if (weightKg == null) repsText else "${formatWeight(weightKg, unit)} ${unit.label} $repsText"
 }
+
+fun formatRest(seconds: Int): String = if (seconds == 0) "Off" else formatDuration(seconds.toLong())
 
 fun formatDate(millis: Long): String =
     Instant.ofEpochMilli(millis)

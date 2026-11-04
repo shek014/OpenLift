@@ -10,8 +10,8 @@
 
 ## What works today
 
-- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
-- **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off.
+- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
+- **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
 - **History:** look back through finished workouts, and edit or delete them.
 - **Exercise library:** 100 exercises, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
 - **Body map:** the home screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.

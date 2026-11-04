@@ -27,9 +27,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -71,6 +75,7 @@ import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.WorkoutExercise
 import io.github.shek014.openlift.data.model.WorkoutSet
 import io.github.shek014.openlift.data.model.formatDuration
+import io.github.shek014.openlift.data.model.formatRest
 import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.data.model.formatWeight
 import io.github.shek014.openlift.data.model.isValidRepsInput
@@ -80,6 +85,7 @@ import io.github.shek014.openlift.data.model.parseWeight
 import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
 import io.github.shek014.openlift.ui.LocalWeightUnit
+import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
 import kotlinx.coroutines.delay
 
 @Composable
@@ -170,6 +176,7 @@ private fun ActiveWorkout(
     onWorkoutSaved: (Long) -> Unit,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
+    val defaultRestSeconds by settings.restSeconds.collectAsStateWithLifecycle()
 
     AskForNotificationsOnce(settings)
 
@@ -185,6 +192,7 @@ private fun ActiveWorkout(
         previousSets = previousSets,
         viewModel = viewModel,
         title = { ElapsedTime(workout.startedAt) },
+        defaultRestSeconds = defaultRestSeconds,
         actions = {
             TextButton(
                 onClick = {
@@ -279,6 +287,7 @@ fun WorkoutEditor(
     onAddExercise: () -> Unit,
     onReorder: () -> Unit,
     onExerciseClick: (String) -> Unit,
+    defaultRestSeconds: Int? = null,
     extraActions: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
 ) {
@@ -297,6 +306,7 @@ fun WorkoutEditor(
                     entry = entry,
                     previous = previousSets[entry.exercise.id].orEmpty(),
                     unit = unit,
+                    restSeconds = defaultRestSeconds?.let { entry.restSeconds ?: it },
                     viewModel = viewModel,
                     onExerciseClick = onExerciseClick,
                     onRemove = {
@@ -350,6 +360,7 @@ private fun LazyListScope.exerciseSection(
     entry: WorkoutExercise,
     previous: List<LoggedSet>,
     unit: WeightUnit,
+    restSeconds: Int?,
     viewModel: WorkoutEditorViewModel,
     onExerciseClick: (String) -> Unit,
     onRemove: () -> Unit,
@@ -361,17 +372,29 @@ private fun LazyListScope.exerciseSection(
                 modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = entry.exercise.name,
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onExerciseClick(entry.exercise.id) },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    ExerciseThumbnail(entry.exercise.id, size = 40.dp)
+                    Text(
+                        text = entry.exercise.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Filled.Close, contentDescription = "Remove ${entry.exercise.name}")
                 }
+            }
+            restSeconds?.let { seconds ->
+                RestTimerControl(
+                    seconds = seconds,
+                    onChange = { viewModel.updateRestSeconds(entry.id, it) },
+                )
             }
             SetColumns(
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -390,6 +413,7 @@ private fun LazyListScope.exerciseSection(
             previous = previous.getOrNull(index),
             hint = setHint(entry.sets, index, previous),
             unit = unit,
+            restSeconds = restSeconds,
             viewModel = viewModel,
         )
     }
@@ -401,6 +425,46 @@ private fun LazyListScope.exerciseSection(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Text("Add set")
+        }
+    }
+}
+
+/** Shows how long this exercise rests for, and lets it be changed from a menu. */
+@Composable
+private fun RestTimerControl(seconds: Int, onChange: (Int) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable { menuOpen = true }
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Timer,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "Rest timer: ${formatRest(seconds)}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            AppSettings.ExerciseRestSecondsChoices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(formatRest(choice)) },
+                    onClick = {
+                        menuOpen = false
+                        onChange(choice)
+                    },
+                )
+            }
         }
     }
 }
@@ -446,6 +510,7 @@ private fun SetRow(
     previous: LoggedSet?,
     hint: SetHint?,
     unit: WeightUnit,
+    restSeconds: Int?,
     viewModel: WorkoutEditorViewModel,
 ) {
     fun shown(weightKg: Double?) = weightKg?.let { formatWeight(it, unit) }.orEmpty()
@@ -514,7 +579,7 @@ private fun SetRow(
                     if (set.completed) {
                         viewModel.uncompleteSet(set.id)
                     } else if (repsToLog != null) {
-                        viewModel.completeSet(set.id, parseWeight(weightText, unit) ?: hint?.weightKg, repsToLog)
+                        viewModel.completeSet(set.id, parseWeight(weightText, unit) ?: hint?.weightKg, repsToLog, restSeconds)
                     }
                 },
             ) {

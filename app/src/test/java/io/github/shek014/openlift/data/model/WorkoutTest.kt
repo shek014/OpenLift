@@ -136,6 +136,13 @@ class WorkoutTest {
     }
 
     @Test
+    fun `rest times read as a duration or off`() {
+        assertEquals("Off", formatRest(0))
+        assertEquals("0:45", formatRest(45))
+        assertEquals("1:30", formatRest(90))
+    }
+
+    @Test
     fun `durations are shown as minutes or hours`() {
         assertEquals("0:05", formatDuration(5))
         assertEquals("1:35", formatDuration(95))

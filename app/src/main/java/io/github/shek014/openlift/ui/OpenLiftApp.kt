@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
@@ -147,8 +148,10 @@ fun OpenLiftApp(settings: AppSettings) {
                 }
                 composable("workout/add") { entry ->
                     val viewModel = workoutViewModel(navController, entry)
+                    val recentExercises by viewModel.recentExercises.collectAsStateWithLifecycle()
                     ExerciseListScreen(
                         title = "Add exercise",
+                        recentExercises = recentExercises,
                         onBack = navController::popBackStack,
                         onExerciseClick = { id ->
                             viewModel.addExercise(id)
@@ -201,8 +204,10 @@ fun OpenLiftApp(settings: AppSettings) {
                 }
                 composable("$EditWorkoutRoute/add") { entry ->
                     val viewModel = editWorkoutViewModel(navController, entry)
+                    val recentExercises by viewModel.recentExercises.collectAsStateWithLifecycle()
                     ExerciseListScreen(
                         title = "Add exercise",
+                        recentExercises = recentExercises,
                         onBack = navController::popBackStack,
                         onExerciseClick = { id ->
                             viewModel.addExercise(id)
