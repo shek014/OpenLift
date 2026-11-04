@@ -429,7 +429,7 @@ fun WorkoutEditor(
 private fun setCount(count: Int) = if (count == 1) "1 set" else "$count sets"
 
 @Composable
-private fun ElapsedTime(startedAt: Long) {
+fun ElapsedTime(startedAt: Long) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {

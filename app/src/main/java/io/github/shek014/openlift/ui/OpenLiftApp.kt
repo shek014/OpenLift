@@ -61,6 +61,7 @@ import io.github.shek014.openlift.ui.routines.RoutinesScreen
 import io.github.shek014.openlift.ui.routines.SplitDetailScreen
 import io.github.shek014.openlift.ui.routines.SplitIdArg
 import io.github.shek014.openlift.ui.settings.SettingsScreen
+import io.github.shek014.openlift.ui.workout.ActiveWorkoutBar
 import io.github.shek014.openlift.ui.workout.ReorderExercisesScreen
 import io.github.shek014.openlift.ui.workout.ReorderItem
 import io.github.shek014.openlift.ui.workout.ReorderScreen
@@ -104,6 +105,10 @@ fun OpenLiftApp(settings: AppSettings) {
     Scaffold(
         bottomBar = {
             Column {
+                val onWorkoutTab = currentDestination?.hierarchy?.any { it.route == Tab.Workout.route } == true
+                if (!onWorkoutTab) {
+                    ActiveWorkoutBar(onClick = { navController.openTab(Tab.Workout) })
+                }
                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
                 NavigationBar {
                     Tab.entries.forEach { tab ->
