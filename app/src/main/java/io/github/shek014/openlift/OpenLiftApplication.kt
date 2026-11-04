@@ -1,17 +1,41 @@
 package io.github.shek014.openlift
 
 import android.app.Application
+import android.os.Build
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
+import io.github.shek014.openlift.data.ThemePreference
 import io.github.shek014.openlift.data.local.OpenLiftDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 /** Created once when the app starts. Holds the objects shared by all screens. */
-class OpenLiftApplication : Application() {
+class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val database by lazy { OpenLiftDatabase.create(this) }
 
     val exerciseRepository by lazy { ExerciseRepository(database.exerciseDao(), applicationScope) }
+
+    val exerciseMedia by lazy { ExerciseMedia(assets) }
+
+    val themePreference by lazy { ThemePreference(this) }
+
+    /** Teaches the image library to play GIFs. Android 9 added a faster way to do it. */
+    override fun newImageLoader(context: PlatformContext): ImageLoader =
+        ImageLoader.Builder(context)
+            .components {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    add(AnimatedImageDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }
+            .build()
 }

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Only used while the app starts; Compose draws everything after that. -->
-    <style name="Theme.OpenLift" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.OpenLift" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#181B1E</item>
+    </style>
 </resources>

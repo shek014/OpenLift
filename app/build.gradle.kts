@@ -65,6 +65,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
 
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)

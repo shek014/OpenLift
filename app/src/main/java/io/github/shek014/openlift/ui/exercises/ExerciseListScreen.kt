@@ -1,6 +1,5 @@
 package io.github.shek014.openlift.ui.exercises
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,7 +19,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -180,17 +178,6 @@ private fun ResultCount(count: Int) {
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun ExerciseRow(exercise: Exercise, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(exercise.name) },
-        supportingContent = {
-            Text("${exercise.equipment.label} · ${exercise.primaryMuscles.joinToString { it.label }}")
-        },
-        modifier = Modifier.clickable(onClick = onClick),
     )
 }
 
