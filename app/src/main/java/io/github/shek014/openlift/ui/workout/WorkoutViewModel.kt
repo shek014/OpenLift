@@ -21,6 +21,7 @@ import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.format
+import io.github.shek014.openlift.data.model.orderForSuperset
 import io.github.shek014.openlift.data.model.setRecords
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.previousSetsByExercise
@@ -64,6 +65,20 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
     fun removeExercise(workoutExerciseId: Long) = run { removeExercise(workoutExerciseId) }
 
     fun reorderExercises(workoutExerciseIds: List<Long>) = run { reorderExercises(workoutExerciseIds) }
+
+    fun replaceExercise(workoutExerciseId: Long, exerciseId: String) = run { replaceExercise(workoutExerciseId, exerciseId) }
+
+    /** Pairs two exercises in a superset, and moves them next to each other. */
+    fun addToSuperset(workoutExerciseId: Long, partnerId: Long) {
+        val workout = state.value?.workout ?: return
+        val partner = workout.exercises.find { it.id == partnerId } ?: return
+        run {
+            setSuperset(listOf(workoutExerciseId, partnerId), partner.supersetId ?: partnerId)
+            reorderExercises(workout.orderForSuperset(workoutExerciseId, partnerId))
+        }
+    }
+
+    fun removeFromSuperset(workoutExerciseId: Long) = run { setSuperset(listOf(workoutExerciseId), null) }
 
     fun addSet(workoutExerciseId: Long) = run { addSet(workoutExerciseId) }
 

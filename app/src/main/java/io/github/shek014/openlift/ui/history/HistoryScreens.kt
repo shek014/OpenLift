@@ -66,6 +66,7 @@ class HistoryViewModel(repository: WorkoutRepository) : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
+    onBack: () -> Unit,
     onWorkoutClick: (workoutId: Long) -> Unit,
     onStatistics: () -> Unit,
     viewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory),
@@ -76,6 +77,11 @@ fun HistoryScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("History") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
             actions = {
                 TextButton(onClick = onStatistics) { Text("Statistics") }
             },
@@ -181,6 +187,7 @@ fun EditWorkoutScreen(
     viewModel: SavedWorkoutViewModel,
     onAddExercise: () -> Unit,
     onReorder: () -> Unit,
+    onReplace: (workoutExerciseId: Long) -> Unit,
     onExerciseClick: (exerciseId: String) -> Unit,
     onDone: (workoutStillExists: Boolean) -> Unit,
 ) {
@@ -200,6 +207,7 @@ fun EditWorkoutScreen(
         },
         onAddExercise = onAddExercise,
         onReorder = onReorder,
+        onReplace = onReplace,
         onExerciseClick = onExerciseClick,
     )
 }

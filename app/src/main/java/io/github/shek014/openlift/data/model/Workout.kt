@@ -45,6 +45,8 @@ data class WorkoutExercise(
     val restSeconds: Int? = null,
     val targetRepsMin: Int? = null,
     val targetRepsMax: Int? = null,
+    /** Exercises with the same number here are done back to back as a superset. */
+    val supersetId: Long? = null,
 ) {
     /** The completed sets that count, leaving out warm-ups. */
     val workSets: List<WorkoutSet>
@@ -163,6 +165,32 @@ fun parseDuration(text: String): Int? {
         else -> (parts[0].toIntOrNull() ?: 0) * 60 + (parts[1].toIntOrNull() ?: 0)
     }
     return seconds?.takeIf { it > 0 }
+}
+
+/** The other exercises in the same superset as this one. */
+fun Workout.supersetPartners(entry: WorkoutExercise): List<WorkoutExercise> {
+    val id = entry.supersetId ?: return emptyList()
+    return exercises.filter { it.supersetId == id && it.id != entry.id }
+}
+
+/** A superset has no rest between its exercises, only after the last one. */
+fun Workout.restsAfter(entry: WorkoutExercise): Boolean {
+    val position = exercises.indexOf(entry)
+    return supersetPartners(entry).none { exercises.indexOf(it) > position }
+}
+
+/**
+ * The order of the exercises once [entryId] is paired with [partnerId]. The partner moves to sit
+ * right after it, unless the partner is already in a superset, which [entryId] then moves to join.
+ */
+fun Workout.orderForSuperset(entryId: Long, partnerId: Long): List<Long> {
+    val partner = exercises.first { it.id == partnerId }
+    val (moving, anchor) = if (partner.supersetId == null) partnerId to entryId else entryId to partnerId
+    val others = exercises.filter { it.id != moving }
+    val group = exercises.first { it.id == anchor }.supersetId
+    val last = others.indexOfLast { it.id == anchor || (group != null && it.supersetId == group) }
+    val ids = others.map { it.id }
+    return ids.take(last + 1) + moving + ids.drop(last + 1)
 }
 
 /** The workout's name, or one from the time of day it started. */

@@ -12,10 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -29,9 +28,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,8 +101,6 @@ class HomeViewModel(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onOpenSettings: () -> Unit,
-    onOpenBody: () -> Unit,
     onWorkoutClick: (Long) -> Unit,
     onEditWorkout: (Long) -> Unit,
     onWorkoutCopied: () -> Unit,
@@ -117,18 +116,23 @@ fun HomeScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text("Home") },
-            actions = {
-                IconButton(onClick = onOpenBody) {
-                    Icon(Icons.Filled.Accessibility, contentDescription = "Body")
-                }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
-            },
         )
         val list = workouts
+        val listState = rememberLazyListState()
+
+        // A list keeps its place when something's added above it, which would hide a new workout.
+        var newestSeen by rememberSaveable { mutableStateOf<Long?>(null) }
+        val newest = list?.firstOrNull()?.id
+        LaunchedEffect(newest) {
+            if (newest != null && newest != newestSeen) {
+                if (newestSeen != null) listState.scrollToItem(0)
+                newestSeen = newest
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

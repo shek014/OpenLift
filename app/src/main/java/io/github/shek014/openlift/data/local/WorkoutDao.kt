@@ -194,6 +194,41 @@ interface WorkoutDao {
     }
 
     @Transaction
+    suspend fun replaceExercise(workoutExerciseId: Long, exerciseId: String) {
+        pointAtExercise(workoutExerciseId, exerciseId, lastRestSeconds(exerciseId))
+        // The numbers belonged to the old exercise, but the number of sets is probably still right.
+        deleteWarmupSets(workoutExerciseId)
+        clearSets(workoutExerciseId)
+        if (countSets(workoutExerciseId) == 0) addSet(workoutExerciseId)
+    }
+
+    @Query(
+        """
+        UPDATE workout_exercises
+        SET exerciseId = :exerciseId, restSeconds = :restSeconds, targetRepsMin = NULL, targetRepsMax = NULL
+        WHERE id = :workoutExerciseId
+        """,
+    )
+    suspend fun pointAtExercise(workoutExerciseId: Long, exerciseId: String, restSeconds: Int?)
+
+    @Query("DELETE FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId AND setType = 'Warmup'")
+    suspend fun deleteWarmupSets(workoutExerciseId: Long)
+
+    @Query(
+        """
+        UPDATE workout_sets SET weightKg = NULL, reps = NULL, durationSeconds = NULL, completed = 0
+        WHERE workoutExerciseId = :workoutExerciseId
+        """,
+    )
+    suspend fun clearSets(workoutExerciseId: Long)
+
+    @Query("SELECT COUNT(*) FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId")
+    suspend fun countSets(workoutExerciseId: Long): Int
+
+    @Query("UPDATE workout_exercises SET supersetId = :supersetId WHERE id IN (:workoutExerciseIds)")
+    suspend fun setSuperset(workoutExerciseIds: List<Long>, supersetId: Long?)
+
+    @Transaction
     suspend fun addExercise(workoutId: Long, exerciseId: String) {
         val id = insertWorkoutExercise(
             WorkoutExerciseEntity(

@@ -47,6 +47,8 @@ data class WorkoutExerciseEntity(
     /** The reps the routine called for, if it came from one. */
     val targetRepsMin: Int? = null,
     val targetRepsMax: Int? = null,
+    /** Exercises with the same number here are done back to back as a superset. */
+    val supersetId: Long? = null,
 )
 
 /** One set. Weight is always stored in kilograms, and null means no added weight. */

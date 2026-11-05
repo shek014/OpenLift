@@ -11,7 +11,7 @@
 ## What works today
 
 - **Home:** your latest workouts in order, showing the time, volume and exercises of each, with a menu to share it, save it as a routine, copy it into a new workout, edit it or delete it.
-- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Mark a set as warm-up, superset, drop set or failure. Drag exercises to reorder them. Workouts save as you go, and finishing one shows a summary.
+- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Tap a set's number to mark it as warm-up, superset, drop set or failure, or to remove it. Each exercise has a menu to reorder, replace, pair in a superset or remove it. Workouts save as you go, and finishing one shows a summary.
 - **Timed exercises:** planks, hangs and carries are tracked by time, with a built-in stopwatch on each set, or type the time yourself.
 - **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
 - **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
@@ -23,6 +23,7 @@
 - **Exercise library:** 101 exercises, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
 - **Body map:** the Body screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 72, and a log of every set you've done.
+- **Profile:** your totals, and the way to History, Statistics, Exercises, Body and Settings.
 - **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, and BMI.
 
 ## What's planned
@@ -110,6 +111,7 @@ app/src/main/java/io/github/shek014/openlift/
     ├── history/             Past workouts, editing them and statistics
     ├── home/                The Home page
     ├── measurements/        Body measurements and BMI
+    ├── profile/             The Profile tab
     ├── routines/            Routines and recommended splits
     ├── settings/            Settings
     ├── theme/               Colors and theming

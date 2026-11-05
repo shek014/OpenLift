@@ -556,3 +556,62 @@ class HomeCardTest {
         assertEquals(formatDate(now - 168 * hour, zone), formatTimeAgo(now - 168 * hour, now, zone))
     }
 }
+
+class SupersetTest {
+    private fun entry(id: Long, superset: Long? = null) = WorkoutExercise(
+        id = id,
+        exercise = Exercise("e$id", "Exercise $id", Equipment.Barbell, listOf(Muscle.MidChest)),
+        sets = emptyList(),
+        supersetId = superset,
+    )
+
+    private fun workout(vararg entries: WorkoutExercise) =
+        Workout(id = 1, startedAt = 0, finishedAt = null, name = null, exercises = entries.toList())
+
+    @Test
+    fun `partners are the others in the same superset`() {
+        val first = entry(1, superset = 1)
+        val second = entry(2, superset = 1)
+        val other = entry(3)
+        val workout = workout(first, second, other)
+
+        assertEquals(listOf(second), workout.supersetPartners(first))
+        assertEquals(emptyList<WorkoutExercise>(), workout.supersetPartners(other))
+    }
+
+    @Test
+    fun `a partner that's been removed leaves nothing to pair with`() {
+        val alone = entry(1, superset = 2)
+
+        assertEquals(emptyList<WorkoutExercise>(), workout(alone).supersetPartners(alone))
+        assertTrue(workout(alone).restsAfter(alone))
+    }
+
+    @Test
+    fun `rest only comes after the last exercise in a superset`() {
+        val first = entry(1, superset = 1)
+        val second = entry(2, superset = 1)
+        val other = entry(3)
+        val workout = workout(first, second, other)
+
+        assertTrue(!workout.restsAfter(first))
+        assertTrue(workout.restsAfter(second))
+        assertTrue(workout.restsAfter(other))
+    }
+
+    @Test
+    fun `pairing moves the chosen exercise right after the one it's paired with`() {
+        val workout = workout(entry(1), entry(2), entry(3), entry(4))
+
+        assertEquals(listOf<Long>(1, 4, 2, 3), workout.orderForSuperset(1, 4))
+        assertEquals(listOf<Long>(1, 2, 3, 4), workout.orderForSuperset(3, 4))
+        assertEquals(listOf<Long>(2, 3, 1, 4), workout.orderForSuperset(3, 1))
+    }
+
+    @Test
+    fun `joining an existing superset goes after all of it`() {
+        val workout = workout(entry(1, superset = 1), entry(2, superset = 1), entry(3), entry(4))
+
+        assertEquals(listOf<Long>(1, 2, 4, 3), workout.orderForSuperset(4, 1))
+    }
+}

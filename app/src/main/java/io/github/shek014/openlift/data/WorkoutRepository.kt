@@ -84,6 +84,12 @@ class WorkoutRepository(
 
     suspend fun removeExercise(workoutExerciseId: Long) = dao.deleteWorkoutExercise(workoutExerciseId)
 
+    suspend fun replaceExercise(workoutExerciseId: Long, exerciseId: String) =
+        dao.replaceExercise(workoutExerciseId, exerciseId)
+
+    suspend fun setSuperset(workoutExerciseIds: List<Long>, supersetId: Long?) =
+        dao.setSuperset(workoutExerciseIds, supersetId)
+
     suspend fun addSet(workoutExerciseId: Long) = dao.addSet(workoutExerciseId)
 
     suspend fun addWarmupSets(workoutExerciseId: Long, sets: List<Pair<Double, Int>>) =
@@ -143,6 +149,7 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
                 restSeconds = row.workoutExercise.restSeconds,
                 targetRepsMin = row.workoutExercise.targetRepsMin,
                 targetRepsMax = row.workoutExercise.targetRepsMax,
+                supersetId = row.workoutExercise.supersetId,
                 sets = row.sets
                     .sortedBy { it.position }
                     .map { WorkoutSet(it.id, it.weightKg, it.reps, it.completed, it.setType, it.durationSeconds) },

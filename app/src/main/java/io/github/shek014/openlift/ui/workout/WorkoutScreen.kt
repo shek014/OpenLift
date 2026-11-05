@@ -24,12 +24,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
@@ -92,10 +95,12 @@ import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.data.model.isValidWeightInput
 import io.github.shek014.openlift.data.model.parseDuration
 import io.github.shek014.openlift.data.model.parseReps
+import io.github.shek014.openlift.data.model.restsAfter
 import io.github.shek014.openlift.data.model.parseWeight
 import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
 import io.github.shek014.openlift.data.model.setLabel
+import io.github.shek014.openlift.data.model.supersetPartners
 import io.github.shek014.openlift.data.model.usesBar
 import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
@@ -109,6 +114,7 @@ fun WorkoutScreen(
     settings: AppSettings,
     onAddExercise: () -> Unit,
     onReorder: () -> Unit,
+    onReplace: (workoutExerciseId: Long) -> Unit,
     onExerciseClick: (exerciseId: String) -> Unit,
     onWorkoutSaved: (workoutId: Long) -> Unit,
 ) {
@@ -133,6 +139,7 @@ fun WorkoutScreen(
             settings = settings,
             onAddExercise = onAddExercise,
             onReorder = onReorder,
+            onReplace = onReplace,
             onExerciseClick = onExerciseClick,
             onWorkoutSaved = onWorkoutSaved,
         )
@@ -219,6 +226,7 @@ private fun ActiveWorkout(
     settings: AppSettings,
     onAddExercise: () -> Unit,
     onReorder: () -> Unit,
+    onReplace: (Long) -> Unit,
     onExerciseClick: (String) -> Unit,
     onWorkoutSaved: (Long) -> Unit,
 ) {
@@ -280,6 +288,7 @@ private fun ActiveWorkout(
         },
         onAddExercise = onAddExercise,
         onReorder = onReorder,
+        onReplace = onReplace,
         onExerciseClick = onExerciseClick,
         extraActions = {
             TextButton(
@@ -346,6 +355,7 @@ fun WorkoutEditor(
     actions: @Composable RowScope.() -> Unit,
     onAddExercise: () -> Unit,
     onReorder: () -> Unit,
+    onReplace: (Long) -> Unit,
     onExerciseClick: (String) -> Unit,
     defaultRestSeconds: Int? = null,
     settings: AppSettings? = null,
@@ -355,6 +365,7 @@ fun WorkoutEditor(
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
     var warmupFor by remember { mutableStateOf<Long?>(null) }
     var platesFor by remember { mutableStateOf<Long?>(null) }
+    var supersetFor by remember { mutableStateOf<Long?>(null) }
     val unit = LocalWeightUnit.current
 
     Column(
@@ -366,6 +377,7 @@ fun WorkoutEditor(
         LazyColumn(modifier = Modifier.weight(1f)) {
             workout.exercises.forEach { entry ->
                 exerciseSection(
+                    workout = workout,
                     entry = entry,
                     previous = previousSets[entry.exercise.id].orEmpty(),
                     unit = unit,
@@ -374,6 +386,20 @@ fun WorkoutEditor(
                     onExerciseClick = onExerciseClick,
                     onWarmup = settings?.takeUnless { entry.exercise.isTimed }?.let { { warmupFor = entry.id } },
                     onPlates = settings?.takeIf { entry.exercise.equipment.usesBar }?.let { { platesFor = entry.id } },
+                    onReorder = onReorder,
+                    onReplace = {
+                        if (entry.sets.any { it.completed }) {
+                            confirmation = Confirmation(
+                                title = "Replace ${entry.exercise.name}?",
+                                message = "The sets you've logged for it will be cleared.",
+                                confirmLabel = "Replace",
+                                onConfirm = { onReplace(entry.id) },
+                            )
+                        } else {
+                            onReplace(entry.id)
+                        }
+                    },
+                    onAddToSuperset = { supersetFor = entry.id },
                     onRemove = {
                         confirmation = Confirmation(
                             title = "Remove ${entry.exercise.name}?",
@@ -392,11 +418,6 @@ fun WorkoutEditor(
                     Button(onClick = onAddExercise, modifier = Modifier.fillMaxWidth()) {
                         Text("Add exercise")
                     }
-                    if (workout.exercises.size > 1) {
-                        OutlinedButton(onClick = onReorder, modifier = Modifier.fillMaxWidth()) {
-                            Text("Reorder exercises")
-                        }
-                    }
                     extraActions()
                 }
             }
@@ -405,6 +426,17 @@ fun WorkoutEditor(
     }
 
     confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
+    val supersetEntry = workout.exercises.find { it.id == supersetFor }
+    if (supersetEntry != null) {
+        SupersetDialog(
+            choices = workout.exercises.filter { it.id != supersetEntry.id },
+            onChoose = {
+                supersetFor = null
+                viewModel.addToSuperset(supersetEntry.id, it.id)
+            },
+            onDismiss = { supersetFor = null },
+        )
+    }
     val warmupEntry = workout.exercises.find { it.id == warmupFor }
     if (warmupEntry != null && settings != null) {
         WarmupDialog(
@@ -441,6 +473,7 @@ fun ElapsedTime(startedAt: Long) {
 }
 
 private fun LazyListScope.exerciseSection(
+    workout: Workout,
     entry: WorkoutExercise,
     previous: List<LoggedSet>,
     unit: WeightUnit,
@@ -449,8 +482,12 @@ private fun LazyListScope.exerciseSection(
     onExerciseClick: (String) -> Unit,
     onWarmup: (() -> Unit)?,
     onPlates: (() -> Unit)?,
+    onReorder: () -> Unit,
+    onReplace: () -> Unit,
+    onAddToSuperset: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val partners = workout.supersetPartners(entry)
     val workSets = entry.sets.filterNot { it.isWarmup }
 
     item(key = "exercise-${entry.id}") {
@@ -474,8 +511,34 @@ private fun LazyListScope.exerciseSection(
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Filled.Close, contentDescription = "Remove ${entry.exercise.name}")
+                ExerciseMenu(
+                    name = entry.exercise.name,
+                    hasOtherExercises = workout.exercises.size > 1,
+                    inSuperset = partners.isNotEmpty(),
+                    onReorder = onReorder,
+                    onReplace = onReplace,
+                    onAddToSuperset = onAddToSuperset,
+                    onRemoveFromSuperset = { viewModel.removeFromSuperset(entry.id) },
+                    onRemove = onRemove,
+                )
+            }
+            if (partners.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.padding(start = 20.dp, top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Link,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "Superset with ${partners.joinToString { it.exercise.name }}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -519,7 +582,7 @@ private fun LazyListScope.exerciseSection(
             previous = if (set.isWarmup) null else previous.getOrNull(workIndex),
             hint = if (set.isWarmup) null else setHint(workSets, workIndex, previous, entry.targetRepsMin.takeUnless { entry.exercise.isTimed }),
             unit = unit,
-            restSeconds = restSeconds,
+            restSeconds = restSeconds.takeIf { workout.restsAfter(entry) },
             viewModel = viewModel,
         )
     }
@@ -533,6 +596,81 @@ private fun LazyListScope.exerciseSection(
             Text("Add set")
         }
     }
+}
+
+/** The options for an exercise, behind three dots. */
+@Composable
+private fun ExerciseMenu(
+    name: String,
+    hasOtherExercises: Boolean,
+    inSuperset: Boolean,
+    onReorder: () -> Unit,
+    onReplace: () -> Unit,
+    onAddToSuperset: () -> Unit,
+    onRemoveFromSuperset: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
+    @Composable
+    fun Option(label: String, enabled: Boolean = true, color: Color = Color.Unspecified, action: () -> Unit) {
+        DropdownMenuItem(
+            text = { Text(label, color = if (enabled) color else Color.Unspecified) },
+            enabled = enabled,
+            onClick = {
+                menuOpen = false
+                action()
+            },
+        )
+    }
+
+    Box {
+        IconButton(onClick = { menuOpen = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "Options for $name")
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            Option("Reorder exercises", enabled = hasOtherExercises, action = onReorder)
+            Option("Replace exercise", action = onReplace)
+            if (inSuperset) {
+                Option("Remove from superset", action = onRemoveFromSuperset)
+            } else {
+                Option("Add to superset", enabled = hasOtherExercises, action = onAddToSuperset)
+            }
+            Option("Remove exercise", color = MaterialTheme.colorScheme.error, action = onRemove)
+        }
+    }
+}
+
+/** Chooses the exercise to pair this one with. */
+@Composable
+private fun SupersetDialog(
+    choices: List<WorkoutExercise>,
+    onChoose: (WorkoutExercise) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Superset with") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                choices.forEach { choice ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { onChoose(choice) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ExerciseThumbnail(choice.exercise.id, size = 40.dp)
+                        Text(choice.exercise.name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** Shows how long this exercise rests for, and lets it be changed from a menu. */
@@ -606,7 +744,7 @@ private fun SetColumns(
         Box(Modifier.weight(1f)) { previous() }
         Box(Modifier.width(62.dp)) { weight() }
         Box(Modifier.width(50.dp)) { reps() }
-        Row(Modifier.width(if (hasTimer) 120.dp else 80.dp), horizontalArrangement = Arrangement.End) { actions() }
+        Row(Modifier.width(if (hasTimer) 88.dp else 48.dp), horizontalArrangement = Arrangement.End) { actions() }
     }
 }
 
@@ -665,7 +803,18 @@ private fun SetRow(
             .background(rowColor)
             .padding(horizontal = 16.dp),
         hasTimer = isTimed && viewModel.setTimer != null,
-        number = { SetTypeLabel(label, name, set.setType) { viewModel.updateSetType(set.id, it) } },
+        number = {
+            SetOptions(
+                label = label,
+                name = name,
+                type = set.setType,
+                onChange = { viewModel.updateSetType(set.id, it) },
+                onRemove = {
+                    if (timingThisSet) viewModel.stopSetTimer()
+                    viewModel.removeSet(set.id)
+                },
+            )
+        },
         previous = {
             Text(
                 text = previous?.let { formatSet(it.weightKg, it.reps, unit, it.durationSeconds) } ?: "-",
@@ -757,29 +906,28 @@ private fun SetRow(
                     },
                 )
             }
-            IconButton(onClick = { viewModel.removeSet(set.id) }, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = "Delete $name",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         },
     )
 }
 
-/** A set's number and type. Tapping it opens a menu to change the type. */
+/** A set's number and type. Tapping it opens a menu to change the type or remove the set. */
 @Composable
-private fun SetTypeLabel(label: String, name: String, type: SetType, onChange: (SetType) -> Unit) {
+private fun SetOptions(
+    label: String,
+    name: String,
+    type: SetType,
+    onChange: (SetType) -> Unit,
+    onRemove: () -> Unit,
+) {
     var menuOpen by remember { mutableStateOf(false) }
     Box {
         Text(
             text = label,
             modifier = Modifier
+                .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
                 .clickable { menuOpen = true }
-                .semantics { contentDescription = "Set type for $name: ${type.label}" }
+                .semantics { contentDescription = "Options for $name: ${type.label}" }
                 .padding(vertical = 10.dp, horizontal = 2.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = if (type == SetType.Normal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
@@ -794,6 +942,14 @@ private fun SetTypeLabel(label: String, name: String, type: SetType, onChange: (
                     },
                 )
             }
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text("Remove set", color = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    menuOpen = false
+                    onRemove()
+                },
+            )
         }
     }
 }
