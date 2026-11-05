@@ -381,7 +381,6 @@ class SetDetailsTest {
         assertEquals("W2", setLabel(SetType.Warmup, 2))
         assertEquals("3D", setLabel(SetType.Drop, 3))
         assertEquals("4F", setLabel(SetType.Failure, 4))
-        assertEquals("5S", setLabel(SetType.Superset, 5))
     }
 
     @Test

@@ -5,6 +5,15 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+/** Supersets became a pairing of exercises, so a single set can't be marked as one any more. */
+private val RemoveSupersetSetType = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE workout_sets SET setType = 'Normal' WHERE setType = 'Superset'")
+    }
+}
 
 @Database(
     entities = [
@@ -17,7 +26,7 @@ import androidx.room.RoomDatabase
         RoutineExerciseEntity::class,
         MeasurementEntity::class,
     ],
-    version = 6,
+    version = 7,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -37,6 +46,8 @@ abstract class OpenLiftDatabase : RoomDatabase() {
 
     companion object {
         fun create(context: Context): OpenLiftDatabase =
-            Room.databaseBuilder(context, OpenLiftDatabase::class.java, "openlift.db").build()
+            Room.databaseBuilder(context, OpenLiftDatabase::class.java, "openlift.db")
+                .addMigrations(RemoveSupersetSetType)
+                .build()
     }
 }

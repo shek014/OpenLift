@@ -18,7 +18,6 @@ enum class WeightUnit(val label: String, val kilogramsPerUnit: Double) {
 enum class SetType(val label: String, val badge: String) {
     Normal("Normal set", ""),
     Warmup("Warm-up set", "W"),
-    Superset("Superset", "S"),
     Drop("Drop set", "D"),
     Failure("Failure set", "F"),
 }
