@@ -33,8 +33,9 @@ import io.github.shek014.openlift.data.model.Muscle.Triceps
 import io.github.shek014.openlift.data.model.Muscle.UpperChest
 
 /**
- * The exercises built into the app. To add one, add a line here; it reaches the database the
- * next time the app starts. Never change an existing id, and never remove an entry once it has
+ * The exercises built into the app. To add one, add a line here, or to [ExerciseVariations] if
+ * it's another version of an existing movement; it reaches the database the next time the app
+ * starts. Never change an existing id, and never remove an entry once it has
  * been released, because saved workouts will refer to it.
  */
 val ExerciseCatalog: List<Exercise> = listOf(
@@ -49,21 +50,21 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("incline_dumbbell_fly", "Incline Dumbbell Fly", Dumbbell, listOf(UpperChest), listOf(FrontDelts)),
     Exercise("machine_chest_press", "Machine Chest Press", Machine, listOf(MidChest), listOf(FrontDelts, Triceps)),
     Exercise("pec_deck", "Pec Deck", Machine, listOf(MidChest), listOf(FrontDelts)),
-    Exercise("cable_crossover", "Cable Crossover", Cable, listOf(LowerChest, MidChest), listOf(FrontDelts)),
-    Exercise("low_cable_fly", "Low Cable Fly", Cable, listOf(UpperChest), listOf(FrontDelts)),
+    Exercise("cable_crossover", "Cable Fly Crossover (High to Low)", Cable, listOf(LowerChest, MidChest), listOf(FrontDelts)),
+    Exercise("low_cable_fly", "Cable Fly Crossover (Low to High)", Cable, listOf(UpperChest), listOf(FrontDelts)),
     Exercise("push_up", "Push-Up", Bodyweight, listOf(MidChest), listOf(FrontDelts, Triceps, Abs)),
     Exercise("chest_dip", "Chest Dip", Bodyweight, listOf(LowerChest), listOf(Triceps, FrontDelts)),
 
     // Back
     Exercise("pull_up", "Pull-Up", Bodyweight, listOf(Lats), listOf(Biceps, MidBack)),
     Exercise("chin_up", "Chin-Up", Bodyweight, listOf(Lats, Biceps), listOf(MidBack)),
-    Exercise("lat_pulldown", "Lat Pulldown", Cable, listOf(Lats), listOf(Biceps, MidBack)),
-    Exercise("close_grip_lat_pulldown", "Close-Grip Lat Pulldown", Cable, listOf(Lats), listOf(Biceps, MidBack)),
+    Exercise("lat_pulldown", "Lat Pulldown (Wide Grip)", Cable, listOf(Lats), listOf(Biceps, MidBack)),
+    Exercise("close_grip_lat_pulldown", "Lat Pulldown (Close Grip)", Cable, listOf(Lats), listOf(Biceps, MidBack)),
     Exercise("straight_arm_pulldown", "Straight-Arm Pulldown", Cable, listOf(Lats), listOf(Triceps)),
     Exercise("barbell_row", "Barbell Row", Barbell, listOf(Lats, MidBack), listOf(RearDelts, Biceps, LowerBack)),
     Exercise("t_bar_row", "T-Bar Row", Barbell, listOf(MidBack, Lats), listOf(RearDelts, Biceps, LowerBack)),
     Exercise("dumbbell_row", "Dumbbell Row", Dumbbell, listOf(Lats), listOf(MidBack, RearDelts, Biceps)),
-    Exercise("seated_cable_row", "Seated Cable Row", Cable, listOf(MidBack, Lats), listOf(RearDelts, Biceps)),
+    Exercise("seated_cable_row", "Seated Cable Row (V-Bar)", Cable, listOf(MidBack, Lats), listOf(RearDelts, Biceps)),
     Exercise("chest_supported_machine_row", "Chest-Supported Machine Row", Machine, listOf(MidBack), listOf(Lats, RearDelts, Biceps)),
     Exercise("barbell_shrug", "Barbell Shrug", Barbell, listOf(Traps), listOf(Forearms)),
     Exercise("dumbbell_shrug", "Dumbbell Shrug", Dumbbell, listOf(Traps), listOf(Forearms)),
@@ -94,23 +95,23 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("hammer_curl", "Hammer Curl", Dumbbell, listOf(Biceps), listOf(Forearms)),
     Exercise("incline_dumbbell_curl", "Incline Dumbbell Curl", Dumbbell, listOf(Biceps)),
     Exercise("concentration_curl", "Concentration Curl", Dumbbell, listOf(Biceps)),
-    Exercise("preacher_curl", "Preacher Curl", EzBar, listOf(Biceps)),
-    Exercise("cable_curl", "Cable Curl", Cable, listOf(Biceps), listOf(Forearms)),
+    Exercise("preacher_curl", "Preacher Curl (EZ Bar)", EzBar, listOf(Biceps)),
+    Exercise("cable_curl", "Cable Curl (Straight Bar)", Cable, listOf(Biceps), listOf(Forearms)),
     Exercise("band_curl", "Band Curl", Band, listOf(Biceps), listOf(Forearms)),
 
     // Triceps
-    Exercise("triceps_pushdown", "Triceps Pushdown", Cable, listOf(Triceps)),
-    Exercise("overhead_cable_triceps_extension", "Overhead Cable Triceps Extension", Cable, listOf(Triceps)),
+    Exercise("triceps_pushdown", "Triceps Pushdown (Straight Bar)", Cable, listOf(Triceps)),
+    Exercise("overhead_cable_triceps_extension", "Overhead Cable Triceps Extension (Rope)", Cable, listOf(Triceps)),
     Exercise("overhead_dumbbell_triceps_extension", "Overhead Dumbbell Triceps Extension", Dumbbell, listOf(Triceps)),
     Exercise("dumbbell_kickback", "Dumbbell Kickback", Dumbbell, listOf(Triceps)),
-    Exercise("skull_crusher", "Skull Crusher", EzBar, listOf(Triceps)),
+    Exercise("skull_crusher", "Skull Crusher (EZ Bar)", EzBar, listOf(Triceps)),
     Exercise("close_grip_bench_press", "Close-Grip Bench Press", Barbell, listOf(Triceps), listOf(MidChest, FrontDelts)),
     Exercise("bench_dip", "Bench Dip", Bodyweight, listOf(Triceps), listOf(FrontDelts, LowerChest)),
 
     // Forearms
-    Exercise("wrist_curl", "Wrist Curl", Dumbbell, listOf(Forearms)),
-    Exercise("reverse_wrist_curl", "Reverse Wrist Curl", Dumbbell, listOf(Forearms)),
-    Exercise("reverse_curl", "Reverse Curl", EzBar, listOf(Forearms), listOf(Biceps)),
+    Exercise("wrist_curl", "Wrist Curl (Dumbbell)", Dumbbell, listOf(Forearms)),
+    Exercise("reverse_wrist_curl", "Reverse Wrist Curl (Dumbbell)", Dumbbell, listOf(Forearms)),
+    Exercise("reverse_curl", "Reverse Curl (EZ Bar)", EzBar, listOf(Forearms), listOf(Biceps)),
     Exercise("farmers_carry", "Farmer's Carry", Dumbbell, listOf(Forearms, Traps), listOf(Abs, Glutes), isTimed = true),
 
     Exercise("dead_hang", "Dead Hang", Bodyweight, listOf(Forearms), listOf(Lats), isTimed = true),
@@ -125,14 +126,14 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("plank", "Plank", Bodyweight, listOf(Abs), listOf(Obliques, LowerBack), isTimed = true),
     Exercise("side_plank", "Side Plank", Bodyweight, listOf(Obliques), listOf(Abs), isTimed = true),
     Exercise("russian_twist", "Russian Twist", Bodyweight, listOf(Obliques), listOf(Abs)),
-    Exercise("cable_woodchop", "Cable Woodchop", Cable, listOf(Obliques), listOf(Abs)),
-    Exercise("pallof_press", "Pallof Press", Cable, listOf(Obliques), listOf(Abs)),
+    Exercise("cable_woodchop", "Cable Woodchop (Low to High)", Cable, listOf(Obliques), listOf(Abs)),
+    Exercise("pallof_press", "Pallof Press (Cable)", Cable, listOf(Obliques), listOf(Abs)),
 
     // Legs
     Exercise("barbell_back_squat", "Barbell Back Squat", Barbell, listOf(Quads, Glutes), listOf(Hamstrings, Adductors, LowerBack)),
     Exercise("front_squat", "Front Squat", Barbell, listOf(Quads), listOf(Glutes, Abs, LowerBack)),
     Exercise("smith_machine_squat", "Smith Machine Squat", SmithMachine, listOf(Quads, Glutes), listOf(Hamstrings)),
-    Exercise("goblet_squat", "Goblet Squat", Kettlebell, listOf(Quads, Glutes), listOf(Abs)),
+    Exercise("goblet_squat", "Goblet Squat (Kettlebell)", Kettlebell, listOf(Quads, Glutes), listOf(Abs)),
     Exercise("hack_squat", "Hack Squat", Machine, listOf(Quads), listOf(Glutes)),
     Exercise("leg_press", "Leg Press", Machine, listOf(Quads, Glutes), listOf(Hamstrings)),
     Exercise("leg_extension", "Leg Extension", Machine, listOf(Quads)),
@@ -146,7 +147,7 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("seated_leg_curl", "Seated Leg Curl", Machine, listOf(Hamstrings), listOf(Calves)),
     Exercise("nordic_curl", "Nordic Curl", Bodyweight, listOf(Hamstrings), listOf(Glutes)),
     Exercise("barbell_hip_thrust", "Barbell Hip Thrust", Barbell, listOf(Glutes), listOf(Hamstrings)),
-    Exercise("glute_bridge", "Glute Bridge", Bodyweight, listOf(Glutes), listOf(Hamstrings)),
+    Exercise("glute_bridge", "Glute Bridge (Bodyweight)", Bodyweight, listOf(Glutes), listOf(Hamstrings)),
     Exercise("cable_kickback", "Cable Kickback", Cable, listOf(Glutes), listOf(Hamstrings)),
     Exercise("kettlebell_swing", "Kettlebell Swing", Kettlebell, listOf(Glutes, Hamstrings), listOf(LowerBack, Abs)),
     Exercise("standing_calf_raise", "Standing Calf Raise", Machine, listOf(Calves)),
@@ -155,4 +156,4 @@ val ExerciseCatalog: List<Exercise> = listOf(
     Exercise("copenhagen_plank", "Copenhagen Plank", Bodyweight, listOf(Adductors), listOf(Obliques), isTimed = true),
     Exercise("hip_abduction_machine", "Hip Abduction Machine", Machine, listOf(Abductors), listOf(Glutes)),
     Exercise("banded_lateral_walk", "Banded Lateral Walk", Band, listOf(Abductors), listOf(Glutes)),
-)
+) + ExerciseVariations.map { it.exercise }

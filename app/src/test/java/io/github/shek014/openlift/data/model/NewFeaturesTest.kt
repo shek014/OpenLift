@@ -614,3 +614,55 @@ class SupersetTest {
         assertEquals(listOf<Long>(1, 2, 4, 3), workout.orderForSuperset(4, 1))
     }
 }
+
+class RecordSetsTest {
+    private val bench = Exercise("bench", "Bench Press", Equipment.Barbell, listOf(Muscle.MidChest))
+
+    private fun workout(vararg sets: WorkoutSet) = Workout(
+        id = 9,
+        startedAt = 0,
+        finishedAt = null,
+        name = null,
+        exercises = listOf(WorkoutExercise(1, bench, sets.toList())),
+    )
+
+    @Test
+    fun `an exercise's first ever workout has no records`() {
+        val first = workout(
+            WorkoutSet(1, 35.0, 15, completed = true),
+            WorkoutSet(2, 40.0, 15, completed = true),
+            WorkoutSet(3, 45.0, 12, completed = true),
+        )
+
+        assertEquals(emptySet<Long>(), recordSetIds(first, emptyList()))
+    }
+
+    @Test
+    fun `each set is compared with history and the sets before it`() {
+        val history = listOf(LoggedSet(1, 1000, "bench", 50.0, 10))
+        val today = workout(
+            WorkoutSet(1, 50.0, 10, completed = true),
+            WorkoutSet(2, 60.0, 10, completed = true),
+            WorkoutSet(3, 60.0, 10, completed = true),
+            WorkoutSet(4, 70.0, 10, completed = false),
+        )
+
+        assertEquals(setOf<Long>(2), recordSetIds(today, history))
+    }
+
+    @Test
+    fun `warm-ups never count as records`() {
+        val history = listOf(LoggedSet(1, 1000, "bench", 50.0, 10))
+        val today = workout(WorkoutSet(1, 80.0, 5, completed = true, setType = SetType.Warmup))
+
+        assertEquals(emptySet<Long>(), recordSetIds(today, history))
+    }
+
+    @Test
+    fun `a workout being edited doesn't compete with its own saved sets`() {
+        val saved = listOf(LoggedSet(9, 1000, "bench", 60.0, 10), LoggedSet(1, 500, "bench", 50.0, 10))
+        val edited = workout(WorkoutSet(1, 60.0, 10, completed = true))
+
+        assertEquals(setOf<Long>(1), recordSetIds(edited, saved))
+    }
+}

@@ -324,13 +324,13 @@ val ExerciseInstructions: Map<String, List<String>> = mapOf(
 
     // Triceps
     "triceps_pushdown" to listOf(
-        "Attach a bar or rope to a high pulley and stand facing it.",
+        "Attach a straight bar to a high pulley and stand facing it.",
         "Hold it with your elbows bent and tucked against your sides.",
         "Push down until your arms are straight, keeping your upper arms still.",
         "Let your hands rise slowly to about chest height.",
     ),
     "overhead_cable_triceps_extension" to listOf(
-        "Attach a rope or bar to a low pulley and stand facing away from the machine.",
+        "Attach a rope to a low pulley and stand facing away from the machine.",
         "Hold it behind your head with your elbows bent and pointing forward.",
         "Straighten your arms forward and up, keeping your upper arms still.",
         "Bend your elbows slowly to return to the start.",
@@ -622,4 +622,4 @@ val ExerciseInstructions: Map<String, List<String>> = mapOf(
         "Take a controlled step to one side, then bring your other foot partway in, keeping tension on the band.",
         "Finish your steps, then walk back the other way.",
     ),
-)
+) + ExerciseVariations.associate { it.exercise.id to it.steps }

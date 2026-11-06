@@ -84,6 +84,34 @@ fun repBests(logged: List<LoggedSet>): List<RepBest> =
 data class SetRecord(val metric: ProgressMetric, val value: Double)
 
 /**
+ * The completed sets in a workout that broke a record, each compared with everything before it.
+ * An exercise that hasn't been done in an earlier workout has nothing to beat, so its sets don't count.
+ */
+fun recordSetIds(workout: Workout, logged: List<LoggedSet>): Set<Long> {
+    val earlier = logged
+        .filter { it.workoutId != workout.id }
+        .groupBy { it.exerciseId }
+        .mapValues { it.value.toMutableList() }
+    return workout.exercises.flatMap { entry ->
+        val before = earlier[entry.exercise.id] ?: return@flatMap emptyList()
+        entry.workSets.filter { set ->
+            val asLogged = LoggedSet(
+                workout.id,
+                workout.finishedAt ?: 0,
+                entry.exercise.id,
+                set.weightKg,
+                set.reps ?: 0,
+                set.durationSeconds,
+                set.setType,
+            )
+            val brokeRecord = setRecords(asLogged, before).isNotEmpty()
+            before += asLogged
+            brokeRecord
+        }.map { it.id }
+    }.toSet()
+}
+
+/**
  * The records one set just broke compared with [earlier] sets. With no earlier sets there's nothing
  * to beat, so the first time doing an exercise never counts.
  */

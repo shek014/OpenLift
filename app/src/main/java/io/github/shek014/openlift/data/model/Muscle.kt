@@ -4,7 +4,9 @@ enum class MuscleGroup(val label: String) {
     Chest("Chest"),
     Back("Back"),
     Shoulders("Shoulders"),
-    Arms("Arms"),
+    Biceps("Biceps"),
+    Triceps("Triceps"),
+    Forearms("Forearms"),
     Core("Core"),
     Legs("Legs"),
 }
@@ -29,9 +31,9 @@ enum class Muscle(val label: String, val group: MuscleGroup) {
     SideDelts("Side delts", MuscleGroup.Shoulders),
     RearDelts("Rear delts", MuscleGroup.Shoulders),
 
-    Biceps("Biceps", MuscleGroup.Arms),
-    Triceps("Triceps", MuscleGroup.Arms),
-    Forearms("Forearms", MuscleGroup.Arms),
+    Biceps("Biceps", MuscleGroup.Biceps),
+    Triceps("Triceps", MuscleGroup.Triceps),
+    Forearms("Forearms", MuscleGroup.Forearms),
 
     Abs("Abs", MuscleGroup.Core),
     Obliques("Obliques", MuscleGroup.Core),

@@ -200,6 +200,7 @@ fun EditWorkoutScreen(
     WorkoutEditor(
         workout = workout,
         previousSets = current.previousSets,
+        recordSetIds = current.recordSetIds,
         viewModel = viewModel,
         title = { Text("Edit workout") },
         actions = {

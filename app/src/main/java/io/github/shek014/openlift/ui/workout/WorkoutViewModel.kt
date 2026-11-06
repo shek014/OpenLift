@@ -1,6 +1,5 @@
 package io.github.shek014.openlift.ui.workout
 
-import android.content.Context
 import android.os.SystemClock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -11,8 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
-import io.github.shek014.openlift.data.AppSettings
-import io.github.shek014.openlift.data.RestNotifications
 import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.RoutineRepository
 import io.github.shek014.openlift.data.WorkoutRepository
@@ -20,19 +17,15 @@ import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.SetType
-import io.github.shek014.openlift.data.model.format
 import io.github.shek014.openlift.data.model.orderForSuperset
-import io.github.shek014.openlift.data.model.setRecords
+import io.github.shek014.openlift.data.model.recordSetIds
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.previousSetsByExercise
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -45,6 +38,8 @@ data class SetTimer(val setId: Long, val startedAt: Long)
 data class WorkoutUiState(
     val workout: Workout?,
     val previousSets: Map<String, List<LoggedSet>>,
+    /** The sets in this workout that broke a personal record. */
+    val recordSetIds: Set<Long> = emptySet(),
 )
 
 /** What the workout editing screen needs, whether it's editing a live workout or a saved one. */
@@ -56,7 +51,11 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
     val recentExercises: StateFlow<List<Exercise>> =
         repository.recentExercises.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    abstract fun addExercise(exerciseId: String)
+    protected abstract suspend fun insertExercise(exerciseId: String)
+
+    fun addExercises(exerciseIds: List<String>) {
+        viewModelScope.launch { exerciseIds.forEach { insertExercise(it) } }
+    }
 
     protected fun run(action: suspend WorkoutRepository.() -> Unit) {
         viewModelScope.launch { repository.action() }
@@ -118,17 +117,10 @@ class WorkoutViewModel(
     repository: WorkoutRepository,
     private val restTimer: RestTimer,
     private val routineRepository: RoutineRepository,
-    private val settings: AppSettings,
-    private val context: Context,
 ) : WorkoutEditorViewModel(repository) {
     private val timer = MutableStateFlow<SetTimer?>(null)
-    private val recordBanner = MutableStateFlow<String?>(null)
-    private var bannerJob: Job? = null
 
     override val setTimer: StateFlow<SetTimer?> = timer.asStateFlow()
-
-    /** A record just broken, shown briefly on the workout screen. */
-    val latestRecord: StateFlow<String?> = recordBanner.asStateFlow()
 
     override fun startSetTimer(setId: Long) {
         timer.value = SetTimer(setId, SystemClock.elapsedRealtime())
@@ -149,47 +141,20 @@ class WorkoutViewModel(
 
     override val state: StateFlow<WorkoutUiState?> =
         combine(repository.activeWorkout, repository.loggedSetsForActiveWorkout) { workout, logged ->
-            WorkoutUiState(workout, previousSetsByExercise(logged))
+            WorkoutUiState(workout, previousSetsByExercise(logged), workout?.let { recordSetIds(it, logged) }.orEmpty())
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val restSeconds: StateFlow<Int?> = restTimer.secondsRemaining
 
     fun startWorkout() = run { startWorkout() }
 
-    override fun addExercise(exerciseId: String) = run { addExercise(exerciseId) }
+    override suspend fun insertExercise(exerciseId: String) = repository.addExercise(exerciseId)
 
     override fun completeSet(setId: Long, weightKg: Double?, reps: Int?, restSeconds: Int?, durationSeconds: Int?) {
         super.completeSet(setId, weightKg, reps, restSeconds, durationSeconds)
-        checkForRecords(setId, weightKg, reps, durationSeconds)
         // Warm-ups pass null, and leave any timer alone. A rest time of 0 means the timer is off.
         if (restSeconds != null) {
             if (restSeconds > 0) restTimer.start(restSeconds) else restTimer.stop()
-        }
-    }
-
-    /** Compares a completed set with everything before it, and announces any record it broke. */
-    private fun checkForRecords(setId: Long, weightKg: Double?, reps: Int?, durationSeconds: Int?) {
-        val entry = state.value?.workout?.exercises?.find { exercise -> exercise.sets.any { it.id == setId } } ?: return
-        val type = entry.sets.first { it.id == setId }.setType
-        if (type == SetType.Warmup) return
-        val others = entry.workSets.filterNot { it.id == setId }
-        viewModelScope.launch {
-            val history = repository.loggedSets(listOf(entry.exercise.id)).first()
-            val earlier = history + others.map {
-                LoggedSet(0, 0, entry.exercise.id, it.weightKg, it.reps ?: 0, it.durationSeconds, it.setType)
-            }
-            val set = LoggedSet(0, 0, entry.exercise.id, weightKg, reps ?: 0, durationSeconds, type)
-            val records = setRecords(set, earlier)
-            if (records.isEmpty()) return@launch
-            val unit = settings.weightUnit.value
-            val details = records.joinToString { "${it.metric.label.lowercase()} ${it.metric.format(it.value, unit)}" }
-            RestNotifications.showRecord(context, entry.exercise.name, details)
-            recordBanner.value = "New record: ${entry.exercise.name}, $details"
-            bannerJob?.cancel()
-            bannerJob = launch {
-                delay(RecordBannerMillis)
-                recordBanner.value = null
-            }
         }
     }
 
@@ -218,15 +183,11 @@ class WorkoutViewModel(
                     application.workoutRepository,
                     application.restTimer,
                     application.routineRepository,
-                    application.settings,
-                    application,
                 )
             }
         }
     }
 }
-
-private const val RecordBannerMillis = 5_000L
 
 /** A workout that's already been saved, being edited from History. */
 class SavedWorkoutViewModel(
@@ -239,10 +200,10 @@ class SavedWorkoutViewModel(
         combine(repository.workout(workoutId), repository.loggedSetsInWorkout(workoutId)) { workout, logged ->
             // What came before this workout, not after it, and not this workout itself.
             val earlier = logged.filter { it.workoutId != workoutId && it.finishedAt < (workout?.finishedAt ?: 0) }
-            WorkoutUiState(workout, previousSetsByExercise(earlier))
+            WorkoutUiState(workout, previousSetsByExercise(earlier), workout?.let { recordSetIds(it, earlier) }.orEmpty())
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    override fun addExercise(exerciseId: String) = run { addExerciseTo(workoutId, exerciseId) }
+    override suspend fun insertExercise(exerciseId: String) = repository.addExerciseTo(workoutId, exerciseId)
 
     /** Tidies up the edit, calling [onDone] with whether the workout still has anything in it. */
     fun finishEditing(onDone: (Boolean) -> Unit) {

@@ -13,8 +13,8 @@ data class ExerciseFilter(
 )
 
 /**
- * Muscle filters only look at primary muscles, so "Arms" lists curls and pushdowns rather than
- * every press and row that uses the arms. Search also looks at secondary muscles.
+ * Muscle filters only look at primary muscles, so "Triceps" lists pushdowns rather than every press
+ * that uses the triceps. Search also looks at secondary muscles, but lists those matches last.
  */
 fun List<Exercise>.filteredBy(filter: ExerciseFilter): List<Exercise> {
     val searchWords = filter.query.lowercase().split(' ').filter { it.isNotEmpty() }
@@ -27,13 +27,17 @@ fun List<Exercise>.filteredBy(filter: ExerciseFilter): List<Exercise> {
         val matchesEquipment = filter.equipment == null || filter.equipment == exercise.equipment
         val searchText = exercise.searchText()
         matchesMuscle && matchesEquipment && searchWords.all { it in searchText }
+    }.sortedBy { exercise ->
+        val mainText = exercise.searchText(includeSecondary = false)
+        if (searchWords.all { it in mainText }) 0 else 1
     }
 }
 
-private fun Exercise.searchText(): String = buildList {
+private fun Exercise.searchText(includeSecondary: Boolean = true): String = buildList {
     add(name)
     add(name.replace("-", "")) // So that "pullup" finds "Pull-Up".
     add(equipment.label)
     if (isCustom) add("custom")
-    (primaryMuscles + secondaryMuscles).forEach { add(it.label) }
+    primaryMuscles.forEach { add(it.label) }
+    if (includeSecondary) secondaryMuscles.forEach { add(it.label) }
 }.joinToString(" ").lowercase()

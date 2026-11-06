@@ -56,12 +56,12 @@ class ExerciseFilterTest {
 
     @Test
     fun `search also looks at secondary muscles`() {
-        assertEquals(listOf("pull_up", "curl"), ids(ExerciseFilter(query = "biceps")))
+        assertEquals(listOf("curl", "pull_up"), ids(ExerciseFilter(query = "biceps")))
     }
 
     @Test
     fun `muscle group filter only looks at primary muscles`() {
-        assertEquals(listOf("curl"), ids(ExerciseFilter(group = MuscleGroup.Arms)))
+        assertEquals(listOf("curl"), ids(ExerciseFilter(group = MuscleGroup.Biceps)))
     }
 
     @Test
@@ -74,7 +74,7 @@ class ExerciseFilterTest {
     fun `specific muscle wins over its group`() {
         assertEquals(
             emptyList<String>(),
-            ids(ExerciseFilter(group = MuscleGroup.Arms, muscle = Muscle.Triceps)),
+            ids(ExerciseFilter(group = MuscleGroup.Triceps, muscle = Muscle.Triceps)),
         )
     }
 
@@ -89,5 +89,16 @@ class ExerciseFilterTest {
             emptyList<String>(),
             ids(ExerciseFilter(query = "curl", equipment = Equipment.Barbell)),
         )
+    }
+
+    @Test
+    fun `search lists primary muscle matches before secondary ones`() {
+        val pushdown = Exercise("pushdown", "Triceps Pushdown", Equipment.Cable, listOf(Muscle.Triceps))
+        val dip = Exercise("dip", "Bench Dip", Equipment.Bodyweight, listOf(Muscle.Triceps))
+        val press = Exercise("press", "Arnold Press", Equipment.Dumbbell, listOf(Muscle.FrontDelts), listOf(Muscle.Triceps))
+
+        val found = listOf(press, dip, bench, pushdown).filteredBy(ExerciseFilter(query = "tricep")).map { it.id }
+
+        assertEquals(listOf("dip", "pushdown", "press", "bench"), found)
     }
 }

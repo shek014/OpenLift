@@ -91,11 +91,11 @@ object RestNotifications {
     private const val RestOverChannel = "rest_over"
     private const val RestOverNotificationId = 2
     private const val RestOverTimeoutMillis = 60_000L
-    private const val RecordChannel = "personal_records"
-    private var nextRecordNotificationId = 100
+    private const val RemovedRecordChannel = "personal_records"
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(RemovedRecordChannel)
         manager.createNotificationChannel(
             NotificationChannel(
                 CountdownChannel,
@@ -122,27 +122,6 @@ object RestNotifications {
     private fun allowed(context: Context) = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) ==
         PackageManager.PERMISSION_GRANTED
-
-    /** Does nothing if notifications aren't allowed. The workout screen still shows the record. */
-    fun showRecord(context: Context, exerciseName: String, details: String) {
-        if (!allowed(context)) return
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(
-                RecordChannel,
-                context.getString(R.string.record_channel),
-                NotificationManager.IMPORTANCE_DEFAULT,
-            ),
-        )
-        val notification = NotificationCompat.Builder(context, RecordChannel)
-            .setSmallIcon(R.drawable.ic_rest_timer)
-            .setContentTitle(context.getString(R.string.record_title, exerciseName))
-            .setContentText(details)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(details))
-            .setContentIntent(openApp(context))
-            .setAutoCancel(true)
-            .build()
-        NotificationManagerCompat.from(context).notify(nextRecordNotificationId++, notification)
-    }
 
     /** Does nothing if notifications aren't allowed. The timer still vibrates in that case. */
     fun showRestOver(context: Context) {

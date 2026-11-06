@@ -35,18 +35,25 @@ class ExerciseListViewModel(repository: ExerciseRepository) : ViewModel() {
         filter = filter.copy(query = query)
     }
 
-    // Tapping a selected chip again clears it.
-
-    fun toggleGroup(group: MuscleGroup) {
-        filter = filter.copy(group = group.takeUnless { it == filter.group }, muscle = null)
+    /** Choosing a whole group, or null for everything, also clears any single muscle. */
+    fun chooseGroup(group: MuscleGroup?) {
+        filter = filter.copy(group = group, muscle = null)
     }
 
-    fun toggleMuscle(muscle: Muscle) {
-        filter = filter.copy(muscle = muscle.takeUnless { it == filter.muscle })
+    fun chooseMuscle(muscle: Muscle) {
+        filter = filter.copy(group = muscle.group, muscle = muscle)
     }
 
-    fun toggleEquipment(equipment: Equipment) {
-        filter = filter.copy(equipment = equipment.takeUnless { it == filter.equipment })
+    fun chooseEquipment(equipment: Equipment?) {
+        filter = filter.copy(equipment = equipment)
+    }
+
+    /** The exercises picked so far when adding several at once, in the order they were picked. */
+    var selectedIds by mutableStateOf(emptyList<String>())
+        private set
+
+    fun toggleSelected(exerciseId: String) {
+        selectedIds = if (exerciseId in selectedIds) selectedIds - exerciseId else selectedIds + exerciseId
     }
 
     fun clearFilter() {

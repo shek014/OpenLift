@@ -134,6 +134,7 @@ fun WorkoutScreen(
         ActiveWorkout(
             workout = workout,
             previousSets = current.previousSets,
+            recordSetIds = current.recordSetIds,
             restSeconds = restSeconds,
             viewModel = viewModel,
             settings = settings,
@@ -221,6 +222,7 @@ private fun AskForNotificationsOnce(settings: AppSettings) {
 private fun ActiveWorkout(
     workout: Workout,
     previousSets: Map<String, List<LoggedSet>>,
+    recordSetIds: Set<Long>,
     restSeconds: Int?,
     viewModel: WorkoutViewModel,
     settings: AppSettings,
@@ -231,7 +233,6 @@ private fun ActiveWorkout(
     onWorkoutSaved: (Long) -> Unit,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
-    val latestRecord by viewModel.latestRecord.collectAsStateWithLifecycle()
 
     AskForNotificationsOnce(settings)
 
@@ -245,6 +246,7 @@ private fun ActiveWorkout(
     WorkoutEditor(
         workout = workout,
         previousSets = previousSets,
+        recordSetIds = recordSetIds,
         viewModel = viewModel,
         title = {
             Column {
@@ -306,7 +308,6 @@ private fun ActiveWorkout(
             }
         },
         bottomBar = {
-            latestRecord?.let { RecordBanner(it) }
             restSeconds?.let { seconds ->
                 RestBar(
                     seconds = seconds,
@@ -357,6 +358,7 @@ fun WorkoutEditor(
     onReorder: () -> Unit,
     onReplace: (Long) -> Unit,
     onExerciseClick: (String) -> Unit,
+    recordSetIds: Set<Long> = emptySet(),
     defaultRestSeconds: Int? = null,
     settings: AppSettings? = null,
     extraActions: @Composable () -> Unit = {},
@@ -380,6 +382,7 @@ fun WorkoutEditor(
                     workout = workout,
                     entry = entry,
                     previous = previousSets[entry.exercise.id].orEmpty(),
+                    recordSetIds = recordSetIds,
                     unit = unit,
                     restSeconds = defaultRestSeconds?.let { entry.restSeconds ?: it },
                     viewModel = viewModel,
@@ -476,6 +479,7 @@ private fun LazyListScope.exerciseSection(
     workout: Workout,
     entry: WorkoutExercise,
     previous: List<LoggedSet>,
+    recordSetIds: Set<Long>,
     unit: WeightUnit,
     restSeconds: Int?,
     viewModel: WorkoutEditorViewModel,
@@ -578,6 +582,7 @@ private fun LazyListScope.exerciseSection(
             label = setLabel(set.setType, if (set.isWarmup) warmupIndex + 1 else workIndex + 1),
             number = if (set.isWarmup) null else workIndex + 1,
             set = set,
+            isRecord = set.id in recordSetIds,
             isTimed = entry.exercise.isTimed,
             previous = if (set.isWarmup) null else previous.getOrNull(workIndex),
             hint = if (set.isWarmup) null else setHint(workSets, workIndex, previous, entry.targetRepsMin.takeUnless { entry.exercise.isTimed }),
@@ -740,7 +745,7 @@ private fun SetColumns(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.width(32.dp)) { number() }
+        Box(Modifier.width(48.dp)) { number() }
         Box(Modifier.weight(1f)) { previous() }
         Box(Modifier.width(62.dp)) { weight() }
         Box(Modifier.width(50.dp)) { reps() }
@@ -753,6 +758,7 @@ private fun SetRow(
     label: String,
     number: Int?,
     set: WorkoutSet,
+    isRecord: Boolean,
     isTimed: Boolean,
     previous: LoggedSet?,
     hint: SetHint?,
@@ -808,6 +814,7 @@ private fun SetRow(
                 label = label,
                 name = name,
                 type = set.setType,
+                isRecord = isRecord,
                 onChange = { viewModel.updateSetType(set.id, it) },
                 onRemove = {
                     if (timingThisSet) viewModel.stopSetTimer()
@@ -916,22 +923,38 @@ private fun SetOptions(
     label: String,
     name: String,
     type: SetType,
+    isRecord: Boolean,
     onChange: (SetType) -> Unit,
     onRemove: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Box {
-        Text(
-            text = label,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.small)
                 .clickable { menuOpen = true }
-                .semantics { contentDescription = "Options for $name: ${type.label}" }
+                .semantics {
+                    contentDescription = "Options for $name: ${type.label}" + if (isRecord) ", personal record" else ""
+                }
                 .padding(vertical = 10.dp, horizontal = 2.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (type == SetType.Normal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
-        )
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (type == SetType.Normal) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+            )
+            if (isRecord) {
+                Icon(
+                    imageVector = Icons.Filled.EmojiEvents,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             SetType.entries.forEach { choice ->
                 DropdownMenuItem(
@@ -1018,22 +1041,6 @@ fun NumberField(
             }
         },
     )
-}
-
-@Composable
-private fun RecordBanner(message: String) {
-    Surface(color = MaterialTheme.colorScheme.primary) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(Icons.Filled.EmojiEvents, contentDescription = null)
-            Text(message, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
 }
 
 @Composable

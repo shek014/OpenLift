@@ -26,4 +26,13 @@ class ExerciseContentTest {
         assertTrue("No animations found", gifs.isNotEmpty())
         assertEquals(emptySet<String>(), gifs.map { it.nameWithoutExtension }.toSet() - catalogIds)
     }
+
+    @Test
+    fun `borrowed animations exist`() {
+        val gifs = File("src/main/assets/exercise_media").listFiles { file -> file.extension == "gif" }.orEmpty()
+            .map { it.nameWithoutExtension }
+            .toSet()
+        val missing = ExerciseVariations.mapNotNull { it.drawing }.toSet() - gifs
+        assertEquals(emptySet<String>(), missing)
+    }
 }

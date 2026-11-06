@@ -169,8 +169,9 @@ fun OpenLiftApp(settings: AppSettings) {
                         recentExercises = recentExercises,
                         onBack = navController::popBackStack,
                         onNewExercise = { navController.navigate("workout/custom-exercise/$NewExerciseId") },
-                        onExerciseClick = { id ->
-                            viewModel.addExercise(id)
+                        onExerciseClick = { id -> navController.navigate("workout/exercise/$id") },
+                        onAddExercises = { ids ->
+                            viewModel.addExercises(ids)
                             navController.popBackStack()
                         },
                     )
@@ -248,8 +249,9 @@ fun OpenLiftApp(settings: AppSettings) {
                         recentExercises = recentExercises,
                         onBack = navController::popBackStack,
                         onNewExercise = { navController.navigate("routines/custom-exercise/$NewExerciseId") },
-                        onExerciseClick = { id ->
-                            viewModel.addExercise(id)
+                        onExerciseClick = { id -> navController.navigate("routines/exercise/$id") },
+                        onAddExercises = { ids ->
+                            ids.forEach(viewModel::addExercise)
                             navController.popBackStack()
                         },
                     )
@@ -405,8 +407,9 @@ private fun NavGraphBuilder.savedWorkoutScreens(root: String, homeRoute: String,
             recentExercises = recentExercises,
             onBack = navController::popBackStack,
             onNewExercise = { navController.navigate("$root/custom-exercise/$NewExerciseId") },
-            onExerciseClick = { id ->
-                viewModel.addExercise(id)
+            onExerciseClick = { id -> navController.navigate("$root/exercise/$id") },
+            onAddExercises = { ids ->
+                viewModel.addExercises(ids)
                 navController.popBackStack()
             },
         )
