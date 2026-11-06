@@ -45,8 +45,10 @@ abstract class OpenLiftDatabase : RoomDatabase() {
     abstract fun measurementDao(): MeasurementDao
 
     companion object {
-        fun create(context: Context): OpenLiftDatabase =
-            Room.databaseBuilder(context, OpenLiftDatabase::class.java, "openlift.db")
+        const val FileName = "openlift.db"
+
+        fun create(context: Context, fileName: String = FileName): OpenLiftDatabase =
+            Room.databaseBuilder(context, OpenLiftDatabase::class.java, fileName)
                 .addMigrations(RemoveSupersetSetType)
                 .build()
     }

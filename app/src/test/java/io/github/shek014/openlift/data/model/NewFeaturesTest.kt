@@ -1,5 +1,7 @@
 package io.github.shek014.openlift.data.model
 
+import io.github.shek014.openlift.data.backupFileName
+import io.github.shek014.openlift.data.hasDatabaseHeader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -664,5 +666,20 @@ class RecordSetsTest {
         val edited = workout(WorkoutSet(1, 60.0, 10, completed = true))
 
         assertEquals(setOf<Long>(1), recordSetIds(edited, saved))
+    }
+}
+
+class BackupFileTest {
+    @Test
+    fun `backups are named for the day they were made`() {
+        assertEquals("OpenLift-backup-2026-11-06.db", backupFileName(LocalDate.of(2026, 11, 6)))
+    }
+
+    @Test
+    fun `only database files pass the first check`() {
+        assertTrue(hasDatabaseHeader("SQLite format 3\u0000 and more".toByteArray()))
+        assertTrue(!hasDatabaseHeader("SQLite format".toByteArray()))
+        assertTrue(!hasDatabaseHeader("Just some notes about my workouts".toByteArray()))
+        assertTrue(!hasDatabaseHeader(ByteArray(0)))
     }
 }

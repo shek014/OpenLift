@@ -25,6 +25,7 @@
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 142, and a log of every set you've done.
 - **Profile:** your totals, and the way to History, Statistics, Exercises, Body and Settings.
 - **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, and BMI.
+- **Backups:** save everything to a file you keep wherever you like, and restore it later or on another phone.
 
 ## What's planned
 
@@ -95,6 +96,7 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── ExerciseMedia.kt     Finds each exercise's animation
 │   ├── ExerciseRepository.kt
 │   ├── AppSettings.kt       Theme, units, BMI and rest length
+│   ├── DatabaseBackup.kt    Saving and restoring backups
 │   ├── MeasurementRepository.kt
 │   ├── RecommendedSplits.kt The ready-made programs
 │   ├── RestTimer.kt

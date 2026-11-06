@@ -1,6 +1,8 @@
 package io.github.shek014.openlift
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Build
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -8,6 +10,7 @@ import coil3.SingletonImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import io.github.shek014.openlift.data.AppSettings
+import io.github.shek014.openlift.data.DatabaseBackup
 import io.github.shek014.openlift.data.ExerciseMedia
 import io.github.shek014.openlift.data.ExerciseRepository
 import io.github.shek014.openlift.data.MeasurementRepository
@@ -40,6 +43,15 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
     val exerciseMedia by lazy { ExerciseMedia(assets) }
 
     val settings by lazy { AppSettings(this) }
+
+    val databaseBackup by lazy { DatabaseBackup(this, database) }
+
+    /** Starts the app afresh, which it needs in order to pick up a restored database. */
+    fun restart() {
+        restTimer.stop()
+        startActivity(Intent.makeRestartActivityTask(ComponentName(this, MainActivity::class.java)))
+        Runtime.getRuntime().exit(0)
+    }
 
     /** Teaches the image library to play GIFs. Android 9 added a faster way to do it. */
     override fun newImageLoader(context: PlatformContext): ImageLoader =
