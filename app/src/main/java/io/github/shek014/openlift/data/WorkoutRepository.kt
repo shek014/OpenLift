@@ -87,6 +87,10 @@ class WorkoutRepository(
     suspend fun replaceExercise(workoutExerciseId: Long, exerciseId: String) =
         dao.replaceExercise(workoutExerciseId, exerciseId)
 
+    val exerciseNotes: Flow<Map<String, String>> = exerciseRepository.exerciseNotes
+
+    suspend fun setExerciseNote(exerciseId: String, note: String) = exerciseRepository.setExerciseNote(exerciseId, note)
+
     suspend fun updateNotes(workoutExerciseId: Long, notes: String?) = dao.updateNotes(workoutExerciseId, notes)
 
     suspend fun updateRepTarget(workoutExerciseId: Long, repsMin: Int?, repsMax: Int?) =

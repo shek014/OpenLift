@@ -1,18 +1,19 @@
 package io.github.shek014.openlift.data
 
 import io.github.shek014.openlift.data.local.ExerciseDao
+import io.github.shek014.openlift.data.local.ExerciseNoteEntity
 import io.github.shek014.openlift.data.local.toEntity
 import io.github.shek014.openlift.data.local.toExercise
 import io.github.shek014.openlift.data.local.toMuscleEntities
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.ExerciseDraft
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 
 /** The rest of the app gets its exercises from here and doesn't touch the database directly. */
 class ExerciseRepository(
@@ -55,6 +56,17 @@ class ExerciseRepository(
     suspend fun deleteCustomExercise(id: String) {
         catalogSaved.await()
         dao.archive(id)
+    }
+
+    /** Each exercise's own note, by exercise id. */
+    val exerciseNotes: Flow<Map<String, String>> =
+        dao.observeNotes().map { notes -> notes.associate { it.exerciseId to it.note } }
+
+    /** Saves an exercise's note, or removes it if it's blank. */
+    suspend fun setExerciseNote(exerciseId: String, note: String) {
+        catalogSaved.await()
+        val text = note.trim()
+        if (text.isEmpty()) dao.deleteNote(exerciseId) else dao.saveNote(ExerciseNoteEntity(exerciseId, text))
     }
 
     fun exercise(id: String): Flow<Exercise?> = flow {

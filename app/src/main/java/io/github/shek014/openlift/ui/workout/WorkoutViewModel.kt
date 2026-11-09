@@ -99,6 +99,12 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
 
     fun removeFromSuperset(workoutExerciseId: Long) = run { setSuperset(listOf(workoutExerciseId), null) }
 
+    /** Each exercise's own note, which shows every time it comes up. */
+    val exerciseNotes: StateFlow<Map<String, String>> =
+        repository.exerciseNotes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    fun setExerciseNote(exerciseId: String, note: String) = run { setExerciseNote(exerciseId, note) }
+
     fun updateNotes(workoutExerciseId: Long, notes: String) =
         run { updateNotes(workoutExerciseId, notes.trim().ifEmpty { null }) }
 

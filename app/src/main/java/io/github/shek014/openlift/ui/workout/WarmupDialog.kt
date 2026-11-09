@@ -64,6 +64,11 @@ fun WarmupDialog(
                 if (usesBar) {
                     LabeledField("Bar (${unit.label})", barText, "Bar weight") { barText = it }
                 }
+                Text(
+                    text = "Warm-up sets are saved with the workout, but aren't counted in its totals, records or shared text.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (sets.isEmpty()) {
                     Text(
                         text = if (working == null) "Enter the weight you'll be lifting." else "This is light enough to skip warming up.",

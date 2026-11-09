@@ -10,6 +10,15 @@ import kotlinx.coroutines.flow.Flow
 /** The database queries for exercises. Room generates the code behind this interface. */
 @Dao
 interface ExerciseDao {
+    @Query("SELECT * FROM exercise_notes")
+    fun observeNotes(): Flow<List<ExerciseNoteEntity>>
+
+    @Upsert
+    suspend fun saveNote(note: ExerciseNoteEntity)
+
+    @Query("DELETE FROM exercise_notes WHERE exerciseId = :exerciseId")
+    suspend fun deleteNote(exerciseId: String)
+
     /** Emits the full list now, then again whenever the tables change. */
     @Transaction
     @Query("SELECT * FROM exercises ORDER BY name COLLATE NOCASE")

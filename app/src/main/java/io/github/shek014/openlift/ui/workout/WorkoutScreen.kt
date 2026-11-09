@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
@@ -78,12 +79,14 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
+import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.SetHint
@@ -97,6 +100,7 @@ import io.github.shek014.openlift.data.model.formatRepsTarget
 import io.github.shek014.openlift.data.model.formatRest
 import io.github.shek014.openlift.data.model.formatSet
 import io.github.shek014.openlift.data.model.formatWeight
+import io.github.shek014.openlift.data.model.isRoutineNameTaken
 import io.github.shek014.openlift.data.model.isValidDurationInput
 import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.data.model.isValidWeightInput
@@ -109,6 +113,7 @@ import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
 import io.github.shek014.openlift.data.model.setLabel
 import io.github.shek014.openlift.data.model.supersetPartners
+import io.github.shek014.openlift.data.model.uniqueRoutineName
 import io.github.shek014.openlift.data.model.usesBar
 import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
@@ -243,6 +248,7 @@ private fun ActiveWorkout(
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
     var changedRoutine by remember { mutableStateOf<Routine?>(null) }
     var namingRoutine by remember { mutableStateOf<String?>(null) }
+    val routines by viewModel.routines.collectAsStateWithLifecycle()
     var showingClock by rememberSaveable { mutableStateOf(false) }
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val finish = { update: RoutineUpdate? ->
@@ -346,7 +352,7 @@ private fun ActiveWorkout(
             },
             onSaveAsNew = {
                 changedRoutine = null
-                namingRoutine = "${routine.name} 2"
+                namingRoutine = uniqueRoutineName(routine.name, routines.map { it.name })
             },
             onSkip = {
                 changedRoutine = null
@@ -358,6 +364,7 @@ private fun ActiveWorkout(
     namingRoutine?.let { suggested ->
         NewRoutineDialog(
             suggestedName = suggested,
+            otherNames = routines.map { it.name },
             onSave = { name ->
                 namingRoutine = null
                 finish(RoutineUpdate.SaveAsNew(name))
@@ -487,16 +494,33 @@ private fun RoutineChangedDialog(
 }
 
 @Composable
-private fun NewRoutineDialog(suggestedName: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+private fun NewRoutineDialog(
+    suggestedName: String,
+    otherNames: List<String>,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     var name by rememberSaveable { mutableStateOf(suggestedName) }
+    val taken = isRoutineNameTaken(name, otherNames)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New routine") },
         text = {
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Routine name") },
+                supportingText = if (taken) {
+                    { Text("You already have a routine with this name.") }
+                } else {
+                    null
+                },
+                isError = taken,
+                singleLine = true,
+            )
         },
         confirmButton = {
-            TextButton(enabled = name.isNotBlank(), onClick = { onSave(name.trim()) }) { Text("Save and finish") }
+            TextButton(enabled = name.isNotBlank() && !taken, onClick = { onSave(name.trim()) }) { Text("Save and finish") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
@@ -550,6 +574,32 @@ private fun RepRangeDialog(
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         },
+    )
+}
+
+/** Edits the note kept with an exercise, as opposed to the notes for this workout only. */
+@Composable
+private fun ExerciseNoteDialog(name: String, note: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by rememberSaveable { mutableStateOf(note) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Note for $name") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Kept with the exercise and shown every time it's in a workout, unlike the notes for this workout.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = { Text("Seat height 4, back pad 3") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
@@ -632,6 +682,8 @@ fun WorkoutEditor(
     var platesFor by remember { mutableStateOf<Long?>(null) }
     var supersetFor by remember { mutableStateOf<Long?>(null) }
     var repRangeFor by remember { mutableStateOf<Long?>(null) }
+    var exerciseNoteFor by remember { mutableStateOf<Exercise?>(null) }
+    val exerciseNotes by viewModel.exerciseNotes.collectAsStateWithLifecycle()
     val unit = LocalWeightUnit.current
 
     Column(
@@ -669,6 +721,8 @@ fun WorkoutEditor(
                     },
                     onAddToSuperset = { supersetFor = entry.id },
                     onRepRange = { repRangeFor = entry.id },
+                    exerciseNote = exerciseNotes[entry.exercise.id],
+                    onExerciseNote = { exerciseNoteFor = entry.exercise },
                     onRemove = {
                         confirmation = Confirmation(
                             title = "Remove ${entry.exercise.name}?",
@@ -695,6 +749,17 @@ fun WorkoutEditor(
     }
 
     confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
+    exerciseNoteFor?.let { exercise ->
+        ExerciseNoteDialog(
+            name = exercise.name,
+            note = exerciseNotes[exercise.id].orEmpty(),
+            onSave = {
+                exerciseNoteFor = null
+                viewModel.setExerciseNote(exercise.id, it)
+            },
+            onDismiss = { exerciseNoteFor = null },
+        )
+    }
     workout.exercises.find { it.id == repRangeFor }?.let { entry ->
         RepRangeDialog(
             name = entry.exercise.name,
@@ -768,6 +833,8 @@ private fun LazyListScope.exerciseSection(
     onReplace: () -> Unit,
     onAddToSuperset: () -> Unit,
     onRepRange: () -> Unit,
+    exerciseNote: String?,
+    onExerciseNote: () -> Unit,
     onRemove: () -> Unit,
 ) {
     val partners = workout.supersetPartners(entry)
@@ -802,6 +869,8 @@ private fun LazyListScope.exerciseSection(
                     onReplace = onReplace,
                     onAddToSuperset = onAddToSuperset,
                     onRepRange = onRepRange.takeUnless { entry.exercise.isTimed },
+                    hasExerciseNote = exerciseNote != null,
+                    onExerciseNote = onExerciseNote,
                     onRemoveFromSuperset = { viewModel.removeFromSuperset(entry.id) },
                     onRemove = onRemove,
                 )
@@ -823,6 +892,25 @@ private fun LazyListScope.exerciseSection(
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                     )
+                }
+            }
+            exerciseNote?.let { note ->
+                Row(
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClick = onExerciseNote)
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PushPin,
+                        contentDescription = "Note kept with ${entry.exercise.name}",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(note, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             ExerciseNotes(entry.notes, entry.exercise.name) { viewModel.updateNotes(entry.id, it) }
@@ -899,6 +987,8 @@ private fun ExerciseMenu(
     onReplace: () -> Unit,
     onAddToSuperset: () -> Unit,
     onRepRange: (() -> Unit)?,
+    hasExerciseNote: Boolean,
+    onExerciseNote: () -> Unit,
     onRemoveFromSuperset: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -924,6 +1014,7 @@ private fun ExerciseMenu(
             Option("Reorder exercises", enabled = hasOtherExercises, action = onReorder)
             Option("Replace exercise", action = onReplace)
             onRepRange?.let { Option("Set rep range", action = it) }
+            Option(if (hasExerciseNote) "Edit exercise note" else "Add exercise note", action = onExerciseNote)
             if (inSuperset) {
                 Option("Remove from superset", action = onRemoveFromSuperset)
             } else {
@@ -1247,7 +1338,18 @@ private fun SetOptions(
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             SetType.entries.forEach { choice ->
                 DropdownMenuItem(
-                    text = { Text(choice.label) },
+                    text = {
+                        Column {
+                            Text(choice.label)
+                            if (choice == SetType.Warmup) {
+                                Text(
+                                    text = "Not counted in totals or records",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    },
                     onClick = {
                         menuOpen = false
                         onChange(choice)

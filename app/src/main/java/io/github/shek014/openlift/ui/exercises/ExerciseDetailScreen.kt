@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +41,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -64,6 +67,7 @@ fun ExerciseDetailScreen(
 ) {
     val details by viewModel.details.collectAsStateWithLifecycle()
     val log by viewModel.log.collectAsStateWithLifecycle()
+    val note by viewModel.note.collectAsStateWithLifecycle()
     var confirmingDelete by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -92,6 +96,7 @@ fun ExerciseDetailScreen(
             ) {
                 ExerciseHeading(it.exercise)
                 ExerciseAnimation(it)
+                note?.let { saved -> NoteSection(saved, viewModel::setNote) }
                 MusclesSection(it.exercise)
                 HowToSection(it.howToSteps)
                 ProgressSection(log)
@@ -190,6 +195,26 @@ private fun SectionTitle(title: String) {
         color = MaterialTheme.colorScheme.primary,
     )
     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
+}
+
+/** The person's own note for the exercise, saved as it's typed. */
+@Composable
+private fun NoteSection(saved: String, onChange: (String) -> Unit) {
+    var text by remember { mutableStateOf(saved) }
+    SectionTitle("Your note")
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onChange(it)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+        placeholder = { Text("Seat height, grip, anything to remember") },
+        supportingText = { Text("Shows here and every time this exercise is in a workout.") },
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+    )
 }
 
 @Composable

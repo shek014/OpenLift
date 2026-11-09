@@ -61,6 +61,16 @@ class ExerciseDetailViewModel(
             .flowOn(Dispatchers.IO) // Finding the animation reads the app's files.
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** The note kept with this exercise, or an empty string. */
+    val note: StateFlow<String?> =
+        repository.exerciseNotes
+            .map { it[exerciseId].orEmpty() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setNote(text: String) {
+        viewModelScope.launch { exerciseRepository.setExerciseNote(exerciseId, text) }
+    }
+
     /** Every completed set of this exercise, newest workout first. */
     val log: StateFlow<List<LoggedSet>> =
         workoutRepository.loggedSets(listOf(exerciseId))

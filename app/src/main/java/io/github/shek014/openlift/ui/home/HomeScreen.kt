@@ -54,12 +54,15 @@ import io.github.shek014.openlift.data.model.displayName
 import io.github.shek014.openlift.data.model.formatLongDuration
 import io.github.shek014.openlift.data.model.formatTimeAgo
 import io.github.shek014.openlift.data.model.formatVolume
+import io.github.shek014.openlift.data.model.isRoutineNameTaken
 import io.github.shek014.openlift.data.model.toRoutinePlans
 import io.github.shek014.openlift.data.model.toShareText
+import io.github.shek014.openlift.data.model.uniqueRoutineName
 import io.github.shek014.openlift.ui.LocalWeightUnit
 import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -70,6 +73,12 @@ class HomeViewModel(
     /** Finished workouts, newest first, or null until they've loaded. */
     val workouts: StateFlow<List<Workout>?> =
         workoutRepository.finishedWorkouts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The names already used, so that saving as a routine doesn't repeat one. */
+    val routineNames: StateFlow<List<String>> =
+        routineRepository.routines
+            .map { routines -> routines.map { it.name } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun delete(workout: Workout) {
         viewModelScope.launch { workoutRepository.deleteWorkout(workout.id) }
@@ -107,6 +116,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory),
 ) {
     val workouts by viewModel.workouts.collectAsStateWithLifecycle()
+    val routineNames by viewModel.routineNames.collectAsStateWithLifecycle()
     var deleting by remember { mutableStateOf<Workout?>(null) }
     var savingAsRoutine by remember { mutableStateOf<Workout?>(null) }
     var workoutInProgress by remember { mutableStateOf(false) }
@@ -189,8 +199,9 @@ fun HomeScreen(
     }
     savingAsRoutine?.let { workout ->
         var name by remember(workout.id) {
-            mutableStateOf(workout.displayName())
+            mutableStateOf(uniqueRoutineName(workout.displayName(), routineNames))
         }
+        val taken = isRoutineNameTaken(name, routineNames)
         AlertDialog(
             onDismissRequest = { savingAsRoutine = null },
             title = { Text("Save as routine") },
@@ -198,13 +209,19 @@ fun HomeScreen(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text("Routine name") },
+                    supportingText = if (taken) {
+                        { Text("You already have a routine with this name.") }
+                    } else {
+                        null
+                    },
+                    isError = taken,
                     singleLine = true,
                 )
             },
             confirmButton = {
                 TextButton(
-                    enabled = name.isNotBlank(),
+                    enabled = name.isNotBlank() && !taken,
                     onClick = {
                         savingAsRoutine = null
                         viewModel.saveAsRoutine(workout, name) {

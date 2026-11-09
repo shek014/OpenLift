@@ -77,3 +77,16 @@ fun Exercise.toEntity() = ExerciseEntity(
 fun Exercise.toMuscleEntities(): List<ExerciseMuscleEntity> =
     primaryMuscles.map { ExerciseMuscleEntity(id, it, MuscleRole.Primary) } +
         secondaryMuscles.map { ExerciseMuscleEntity(id, it, MuscleRole.Secondary) }
+
+/**
+ * A note someone keeps with an exercise, like a seat height. It's kept apart from the exercise itself
+ * because built-in exercises are rewritten from the catalog on every launch.
+ */
+@Entity(
+    tableName = "exercise_notes",
+    foreignKeys = [ForeignKey(entity = ExerciseEntity::class, parentColumns = ["id"], childColumns = ["exerciseId"])],
+)
+data class ExerciseNoteEntity(
+    @PrimaryKey val exerciseId: String,
+    val note: String,
+)

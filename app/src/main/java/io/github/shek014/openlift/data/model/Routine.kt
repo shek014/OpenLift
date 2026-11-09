@@ -52,3 +52,15 @@ fun parseExercisePlan(setsText: String, repsMinText: String, repsMaxText: String
     val high = listOfNotNull(first, second).maxOrNull()
     return ExercisePlan(sets, low, high)
 }
+
+private fun sameName(first: String, second: String) = first.trim().equals(second.trim(), ignoreCase = true)
+
+/** Whether another routine already has this name, ignoring case and spaces at either end. */
+fun isRoutineNameTaken(name: String, otherNames: List<String>): Boolean = otherNames.any { sameName(it, name) }
+
+/** [base] if no routine uses it yet, otherwise the first free "Push Day (2)", "Push Day (3)" and so on. */
+fun uniqueRoutineName(base: String, otherNames: List<String>): String {
+    val name = base.trim()
+    if (!isRoutineNameTaken(name, otherNames)) return name
+    return generateSequence(2) { it + 1 }.map { "$name ($it)" }.first { !isRoutineNameTaken(it, otherNames) }
+}

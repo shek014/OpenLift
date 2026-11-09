@@ -333,7 +333,14 @@ fun RoutineEditorScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    label = { Text("Name") },
+                    label = { Text("Routine name") },
+                    placeholder = { Text("Push Day") },
+                    supportingText = if (viewModel.nameTaken) {
+                        { Text("You already have a routine with this name.") }
+                    } else {
+                        null
+                    },
+                    isError = viewModel.nameTaken,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )

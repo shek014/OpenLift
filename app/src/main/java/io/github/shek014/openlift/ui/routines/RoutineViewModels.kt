@@ -19,6 +19,7 @@ import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.ExercisePlan
 import io.github.shek014.openlift.data.model.Routine
+import io.github.shek014.openlift.data.model.isRoutineNameTaken
 import io.github.shek014.openlift.data.model.parseExercisePlan
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -132,13 +133,20 @@ class RoutineEditorViewModel(
 
     var name by mutableStateOf("")
         private set
+
+    /** The names of the other routines, which this one mustn't repeat. */
+    private var otherNames by mutableStateOf(emptyList<String>())
+
+    val nameTaken: Boolean
+        get() = isRoutineNameTaken(name, otherNames)
+
     var exercises by mutableStateOf<List<DraftExercise>>(emptyList())
         private set
     var hasChanges by mutableStateOf(false)
         private set
 
     val canSave: Boolean
-        get() = name.isNotBlank() && exercises.isNotEmpty() && exercises.all { it.plan != null }
+        get() = name.isNotBlank() && !nameTaken && exercises.isNotEmpty() && exercises.all { it.plan != null }
 
     val recentExercises: StateFlow<List<Exercise>> =
         workoutRepository.recentExercises.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -146,6 +154,7 @@ class RoutineEditorViewModel(
     init {
         viewModelScope.launch {
             exercisesById = repository.exercises.first()
+            otherNames = repository.routines.first().filter { it.id != routineId }.map { it.name }
             routineId?.let { id ->
                 repository.routine(id).first()?.let { routine ->
                     name = routine.name

@@ -752,3 +752,22 @@ class AssessmentTwoTest {
         assertTrue(pushUp.copy(equipment = Equipment.Weighted).takesWeight)
     }
 }
+
+class RoutineNameTest {
+    @Test
+    fun `a free name is used as it is`() {
+        assertEquals("Push Day", uniqueRoutineName("Push Day", listOf("Legs")))
+    }
+
+    @Test
+    fun `a taken name gets the first free number`() {
+        assertEquals("Push Day (2)", uniqueRoutineName("Push Day", listOf("Push Day")))
+        assertEquals("Push Day (3)", uniqueRoutineName("Push Day", listOf("push day", "Push Day (2)")))
+    }
+
+    @Test
+    fun `names match regardless of case and spaces at the ends`() {
+        assertTrue(isRoutineNameTaken("  PUSH day ", listOf("Push Day")))
+        assertTrue(!isRoutineNameTaken("Push Day 2", listOf("Push Day")))
+    }
+}
