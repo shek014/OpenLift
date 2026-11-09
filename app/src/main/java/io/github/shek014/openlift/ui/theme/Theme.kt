@@ -17,29 +17,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.shek014.openlift.R
 
-/** The amethyst accent comes from the Black & Amethyst variant of Bearded Theme, by BeardedBear (GPL-3.0). */
+/** Near black with a teal accent. */
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFA85FF1),
-    onPrimary = Color(0xFF111418),
-    primaryContainer = Color(0xFF3A2A5C),
+    primary = Color(0xFF2DD4BF),
+    onPrimary = Color(0xFF032420),
+    primaryContainer = Color(0xFF0F3B36),
     onPrimaryContainer = Color(0xFFE6E8EA),
     secondary = Color(0xFFA6ABB1),
-    onSecondary = Color(0xFF181B1E),
-    secondaryContainer = Color(0xFF2B3036),
+    onSecondary = Color(0xFF0B0C0E),
+    secondaryContainer = Color(0xFF1F2226),
     onSecondaryContainer = Color(0xFFE6E8EA),
-    background = Color(0xFF181B1E),
+    background = Color(0xFF0B0C0E),
     onBackground = Color(0xFFE6E8EA),
-    surface = Color(0xFF181B1E),
+    surface = Color(0xFF0B0C0E),
     onSurface = Color(0xFFE6E8EA),
-    surfaceVariant = Color(0xFF2B3036),
+    surfaceVariant = Color(0xFF1F2226),
     onSurfaceVariant = Color(0xFFA6ABB1),
-    surfaceContainerLowest = Color(0xFF181B1E),
-    surfaceContainerLow = Color(0xFF181B1E),
-    surfaceContainer = Color(0xFF202428),
-    surfaceContainerHigh = Color(0xFF202428),
-    surfaceContainerHighest = Color(0xFF2B3036),
+    surfaceContainerLowest = Color(0xFF0B0C0E),
+    surfaceContainerLow = Color(0xFF0B0C0E),
+    surfaceContainer = Color(0xFF15171A),
+    surfaceContainerHigh = Color(0xFF15171A),
+    surfaceContainerHighest = Color(0xFF1F2226),
     outline = Color(0xFFA6ABB1),
-    outlineVariant = Color(0xFF363B42),
+    outlineVariant = Color(0xFF2A2E33),
 )
 
 private val LightColors = lightColorScheme(

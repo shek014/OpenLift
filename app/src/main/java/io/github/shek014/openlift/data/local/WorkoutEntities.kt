@@ -17,6 +17,8 @@ data class WorkoutEntity(
     val finishedAt: Long? = null,
     /** The name of the routine it was started from, if any. */
     val name: String? = null,
+    /** The routine it was started from, if any. */
+    val routineId: Long? = null,
 )
 
 /** An exercise as done in one workout. The same exercise can appear more than once. */
@@ -49,6 +51,7 @@ data class WorkoutExerciseEntity(
     val targetRepsMax: Int? = null,
     /** Exercises with the same number here are done back to back as a superset. */
     val supersetId: Long? = null,
+    val notes: String? = null,
 )
 
 /** One set. Weight is always stored in kilograms, and null means no added weight. */

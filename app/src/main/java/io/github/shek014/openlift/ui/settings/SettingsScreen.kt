@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -42,6 +43,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.BackupRejectedException
+import io.github.shek014.openlift.data.Sound
 import io.github.shek014.openlift.data.backupFileName
 import io.github.shek014.openlift.data.model.LengthUnit
 import io.github.shek014.openlift.data.model.WeightUnit
@@ -60,6 +62,9 @@ fun SettingsScreen(
     val weightUnit by settings.weightUnit.collectAsStateWithLifecycle()
     val lengthUnit by settings.lengthUnit.collectAsStateWithLifecycle()
     val showBmi by settings.showBmi.collectAsStateWithLifecycle()
+    val recordSound by settings.recordSound.collectAsStateWithLifecycle()
+    val restSound by settings.restSound.collectAsStateWithLifecycle()
+    val player = (LocalContext.current.applicationContext as OpenLiftApplication).soundPlayer
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -107,6 +112,28 @@ fun SettingsScreen(
                 selected = showBmi,
                 label = { if (it) "Show" else "Hide" },
                 onSelect = settings::setShowBmi,
+            )
+            Choices(
+                title = "Personal record sound",
+                note = "Plays when a set beats your best. Choosing one plays it.",
+                choices = Sound.entries,
+                selected = recordSound,
+                label = { it.label },
+                onSelect = {
+                    settings.setRecordSound(it)
+                    player.play(it)
+                },
+            )
+            Choices(
+                title = "Rest timer sound",
+                note = "Plays when your rest is over. Both sounds follow your phone's notification volume.",
+                choices = Sound.entries,
+                selected = restSound,
+                label = { it.label },
+                onSelect = {
+                    settings.setRestSound(it)
+                    player.play(it)
+                },
             )
             BackupSection(backupViewModel)
         }

@@ -11,25 +11,26 @@
 ## What works today
 
 - **Home:** your latest workouts in order, showing the time, volume and exercises of each, with a menu to share it, save it as a routine, copy it into a new workout, edit it or delete it.
-- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Tap a set's number to mark it as warm-up, drop set or failure, or to remove it. You can add several exercises at once. Each exercise has a menu to reorder, replace, pair in a superset or remove it. Workouts save as you go, and finishing one shows a summary.
+- **Workout logging:** add exercises and log sets, reps and weight, with your previous numbers alongside and your recent exercises suggested first. Add notes under each exercise, and change its rep range right there. Tap a set's number to mark it as warm-up, drop set or failure, or to remove it. You can add several exercises at once. Each exercise has a menu to reorder, replace, pair in a superset or remove it. Workouts save as you go, and finishing one shows a summary.
 - **Timed exercises:** planks, hangs and carries are tracked by time, with a built-in stopwatch on each set, or type the time yourself.
+- **Timer and stopwatch:** at the top of a workout, next to Finish.
 - **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
 - **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
-- **Rest timer:** counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
+- **Rest timer:** off until you turn it on for an exercise. Counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
 - **History:** look back through finished workouts, edit or delete them, and see your volume, workouts and sets week by week.
 - **Progress:** a graph and personal records for each exercise, going back as far as you've logged, with a trophy beside any set that breaks a record.
 - **Statistics:** totals, averages, streaks, your busiest days, sets per muscle and your most done exercises, plus graphs of estimated 1 rep max, best set volume, session volume and total reps for each exercise, and your best weight for each rep count.
 - **Body measurements:** optionally track body weight, height, body fat and measurements such as waist and arms, with a graph for each. BMI is off unless you turn it on.
-- **Exercise library:** 298 exercises, including versions of the same movement with different equipment and attachments, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
+- **Exercise library:** 314 exercises, including versions of the same movement with different equipment and attachments, plus as many custom ones as you like, each linked to the primary and secondary muscles it trains. Search by name, equipment or muscle, or filter by muscle group, individual muscle and equipment.
 - **Body map:** the Body screen shows the body from the front and back, filled in with what you've trained this week. Tap a muscle to see the exercises that work it.
-- **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 142, and a log of every set you've done.
+- **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 144, and a log of every set you've done.
 - **Profile:** your totals, and the way to History, Statistics, Exercises, Body and Settings.
-- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, and BMI.
+- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, BMI, and the sounds for personal records and the rest timer.
 - **Backups:** save everything to a file you keep wherever you like, and restore it later or on another phone.
 
 ## What's planned
 
-- **Animate every exercise:** fill in the 156 exercises that don't have an animation yet.
+- **Animate every exercise:** fill in the 170 exercises that don't have an animation yet.
 
 ## Roadmap
 
@@ -102,6 +103,7 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── RestTimer.kt
 │   ├── RestTimerService.kt  Keeps the timer running outside the app
 │   ├── RoutineRepository.kt
+│   ├── Sounds.kt            The sounds and what plays them
 │   ├── WorkoutRepository.kt
 │   ├── local/               Room database
 │   └── model/               Exercises, workouts, routines, progress and statistics
@@ -121,6 +123,8 @@ app/src/main/java/io/github/shek014/openlift/
 ```
 
 The animations are in `app/src/main/assets/exercise_media/`. `tools/build_exercise_gifs.py` builds them, using the list in `tools/everkinetic_gifs.tsv`.
+
+The sounds in `app/src/main/res/raw/` are made from scratch by `tools/make_sounds.py`.
 
 ## Running the tests
 

@@ -46,6 +46,26 @@ private fun Workout.finishedDate(zone: ZoneId): LocalDate? =
     finishedAt?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
 
 /**
+ * How a workout's sets were shared between muscle groups, as fractions that add up to 1, largest
+ * first. Secondary muscles count as half a set, the same as in the statistics.
+ */
+fun muscleSplit(exercises: List<WorkoutExercise>): List<Pair<MuscleGroup, Double>> {
+    val sets = mutableMapOf<MuscleGroup, Double>()
+    exercises.forEach { entry ->
+        val count = entry.workSets.size.toDouble()
+        if (count == 0.0) return@forEach
+        // Each set is shared out, so that an exercise working two groups doesn't count twice.
+        val shares = entry.exercise.primaryMuscles.map { it.group to 1.0 } +
+            entry.exercise.secondaryMuscles.map { it.group to 0.5 }
+        val total = shares.sumOf { it.second }
+        shares.forEach { (group, share) -> sets.merge(group, count * share / total, Double::plus) }
+    }
+    val total = sets.values.sum()
+    if (total == 0.0) return emptyList()
+    return sets.map { (group, value) -> group to value / total }.sortedByDescending { it.second }
+}
+
+/**
  * The longest run of weeks with at least one workout, and the run going on now. A streak still
  * counts as going on if the last workout was last week, since this week isn't over yet.
  */

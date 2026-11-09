@@ -225,6 +225,12 @@ interface WorkoutDao {
     @Query("SELECT COUNT(*) FROM workout_sets WHERE workoutExerciseId = :workoutExerciseId")
     suspend fun countSets(workoutExerciseId: Long): Int
 
+    @Query("UPDATE workout_exercises SET notes = :notes WHERE id = :workoutExerciseId")
+    suspend fun updateNotes(workoutExerciseId: Long, notes: String?)
+
+    @Query("UPDATE workout_exercises SET targetRepsMin = :repsMin, targetRepsMax = :repsMax WHERE id = :workoutExerciseId")
+    suspend fun updateRepTarget(workoutExerciseId: Long, repsMin: Int?, repsMax: Int?)
+
     @Query("UPDATE workout_exercises SET supersetId = :supersetId WHERE id IN (:workoutExerciseIds)")
     suspend fun setSuperset(workoutExerciseIds: List<Long>, supersetId: Long?)
 
@@ -254,12 +260,13 @@ interface WorkoutDao {
     /** Sets up a workout with a routine's exercises. Returns false if one's already in progress. */
     @Transaction
     suspend fun startWorkoutFromRoutine(
+        routineId: Long,
         name: String,
         startedAt: Long,
         exercises: List<RoutineExerciseEntity>,
     ): Boolean {
         if (activeWorkoutId() != null) return false
-        val workoutId = insertWorkout(WorkoutEntity(startedAt = startedAt, name = name))
+        val workoutId = insertWorkout(WorkoutEntity(startedAt = startedAt, name = name, routineId = routineId))
         exercises.forEachIndexed { position, planned ->
             val id = insertWorkoutExercise(
                 WorkoutExerciseEntity(

@@ -11,8 +11,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,12 +45,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,6 +65,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,8 +86,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Routine
-import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.SetHint
+import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.WeightUnit
 import io.github.shek014.openlift.data.model.Workout
 import io.github.shek014.openlift.data.model.WorkoutExercise
@@ -94,9 +101,10 @@ import io.github.shek014.openlift.data.model.isValidDurationInput
 import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.data.model.isValidWeightInput
 import io.github.shek014.openlift.data.model.parseDuration
+import io.github.shek014.openlift.data.model.parseRepRange
 import io.github.shek014.openlift.data.model.parseReps
-import io.github.shek014.openlift.data.model.restsAfter
 import io.github.shek014.openlift.data.model.parseWeight
+import io.github.shek014.openlift.data.model.restsAfter
 import io.github.shek014.openlift.data.model.sameWeight
 import io.github.shek014.openlift.data.model.setHint
 import io.github.shek014.openlift.data.model.setLabel
@@ -233,6 +241,13 @@ private fun ActiveWorkout(
     onWorkoutSaved: (Long) -> Unit,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
+    var changedRoutine by remember { mutableStateOf<Routine?>(null) }
+    var namingRoutine by remember { mutableStateOf<String?>(null) }
+    var showingClock by rememberSaveable { mutableStateOf(false) }
+    val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
+    val finish = { update: RoutineUpdate? ->
+        viewModel.finishWorkout(update) { id -> if (id != null) onWorkoutSaved(id) }
+    }
 
     AskForNotificationsOnce(settings)
 
@@ -263,6 +278,7 @@ private fun ActiveWorkout(
         defaultRestSeconds = AppSettings.DefaultRestSeconds,
         settings = settings,
         actions = {
+            ClockButton(stopwatch) { showingClock = true }
             TextButton(
                 onClick = {
                     val completed = workout.completedSets.size
@@ -279,7 +295,9 @@ private fun ActiveWorkout(
                             message = "Saves ${setCount(completed)}. Any sets you haven't checked off won't be saved.",
                             confirmLabel = "Finish",
                             onConfirm = {
-                                viewModel.finishWorkout { id -> if (id != null) onWorkoutSaved(id) }
+                                viewModel.checkRoutine { routine ->
+                                    if (routine == null) finish(null) else changedRoutine = routine
+                                }
                             },
                         )
                     }
@@ -319,6 +337,251 @@ private fun ActiveWorkout(
     )
 
     confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
+    changedRoutine?.let { routine ->
+        RoutineChangedDialog(
+            routineName = routine.name,
+            onUpdate = {
+                changedRoutine = null
+                finish(RoutineUpdate.Replace(routine))
+            },
+            onSaveAsNew = {
+                changedRoutine = null
+                namingRoutine = "${routine.name} 2"
+            },
+            onSkip = {
+                changedRoutine = null
+                finish(null)
+            },
+            onDismiss = { changedRoutine = null },
+        )
+    }
+    namingRoutine?.let { suggested ->
+        NewRoutineDialog(
+            suggestedName = suggested,
+            onSave = { name ->
+                namingRoutine = null
+                finish(RoutineUpdate.SaveAsNew(name))
+            },
+            onDismiss = { namingRoutine = null },
+        )
+    }
+    if (showingClock) {
+        ClockSheet(viewModel = viewModel, stopwatch = stopwatch, onDismiss = { showingClock = false })
+    }
+}
+
+/** Opens the timer and stopwatch. While the stopwatch runs, it shows the time instead. */
+@Composable
+private fun ClockButton(stopwatch: Stopwatch, onClick: () -> Unit) {
+    if (stopwatch.startedAt == null) {
+        IconButton(onClick = onClick) {
+            Icon(Icons.Filled.Timer, contentDescription = "Timer and stopwatch")
+        }
+    } else {
+        TextButton(onClick = onClick) {
+            Icon(Icons.Filled.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(" ${formatDuration(stopwatchSeconds(stopwatch))}")
+        }
+    }
+}
+
+/** The stopwatch's time in whole seconds, kept up to date while it runs. */
+@Composable
+private fun stopwatchSeconds(stopwatch: Stopwatch): Long {
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(stopwatch) {
+        while (stopwatch.startedAt != null) {
+            now = SystemClock.elapsedRealtime()
+            delay(200)
+        }
+    }
+    return stopwatch.elapsedMillis(now) / 1000
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun ClockSheet(viewModel: WorkoutViewModel, stopwatch: Stopwatch, onDismiss: () -> Unit) {
+    var showingStopwatch by rememberSaveable { mutableStateOf(stopwatch.startedAt != null) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !showingStopwatch, onClick = { showingStopwatch = false }, label = { Text("Timer") })
+                FilterChip(selected = showingStopwatch, onClick = { showingStopwatch = true }, label = { Text("Stopwatch") })
+            }
+            if (showingStopwatch) {
+                Text(
+                    text = formatDuration(stopwatchSeconds(stopwatch)),
+                    style = MaterialTheme.typography.displayMedium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = { if (stopwatch.startedAt == null) viewModel.startStopwatch() else viewModel.pauseStopwatch() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(if (stopwatch.startedAt == null) "Start" else "Pause")
+                    }
+                    OutlinedButton(onClick = viewModel::resetStopwatch, modifier = Modifier.weight(1f)) {
+                        Text("Reset")
+                    }
+                }
+            } else {
+                Text(
+                    text = "Counts down at the bottom of the screen, like the rest timer, and plays the rest timer sound.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TimerChoices.forEach { seconds ->
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.startTimer(seconds)
+                                onDismiss()
+                            },
+                        ) {
+                            Text(formatDuration(seconds.toLong()))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val TimerChoices = listOf(30, 60, 90, 120, 180, 300, 600)
+
+@Composable
+private fun RoutineChangedDialog(
+    routineName: String,
+    onUpdate: () -> Unit,
+    onSaveAsNew: () -> Unit,
+    onSkip: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update $routineName?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("This workout's exercises, sets or rep ranges are different from the routine.")
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onUpdate, modifier = Modifier.fillMaxWidth()) { Text("Update $routineName") }
+                TextButton(onClick = onSaveAsNew, modifier = Modifier.fillMaxWidth()) { Text("Save as a new routine") }
+                TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) { Text("Don't change routines") }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Back to workout") } },
+    )
+}
+
+@Composable
+private fun NewRoutineDialog(suggestedName: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf(suggestedName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New routine") },
+        text = {
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onSave(name.trim()) }) { Text("Save and finish") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun RepRangeDialog(
+    name: String,
+    repsMin: Int?,
+    repsMax: Int?,
+    onSave: (Int?, Int?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var minText by rememberSaveable { mutableStateOf(repsMin?.toString().orEmpty()) }
+    var maxText by rememberSaveable { mutableStateOf(repsMax?.toString().orEmpty()) }
+    val range = parseRepRange(minText, maxText)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rep range") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "For $name in this workout. Leave the second box empty for a single target.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(Modifier.width(64.dp)) {
+                        NumberField(minText, "8", "Lowest reps", KeyboardType.Number) { if (isValidRepsInput(it)) minText = it }
+                    }
+                    Text("to")
+                    Box(Modifier.width(64.dp)) {
+                        NumberField(maxText, "12", "Highest reps", KeyboardType.Number) { if (isValidRepsInput(it)) maxText = it }
+                    }
+                    Text("reps")
+                }
+                if (range == null) {
+                    Text(
+                        text = "The highest can't be lower than the lowest.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = range != null, onClick = { range?.let { onSave(it.first, it.second) } }) { Text("Save") }
+        },
+        dismissButton = {
+            Row {
+                if (repsMin != null) TextButton(onClick = { onSave(null, null) }) { Text("Clear") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    )
+}
+
+/** Notes for one exercise in this workout, saved as they're typed. */
+@Composable
+private fun ExerciseNotes(notes: String?, name: String, onChange: (String) -> Unit) {
+    var text by remember { mutableStateOf(notes.orEmpty()) }
+    BasicTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onChange(it)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 16.dp, top = 4.dp, bottom = 4.dp)
+            .semantics { contentDescription = "Notes for $name" },
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        decorationBox = { field ->
+            Box {
+                if (text.isEmpty()) {
+                    Text(
+                        text = "Add notes",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                field()
+            }
+        },
+    )
 }
 
 @Composable
@@ -368,6 +631,7 @@ fun WorkoutEditor(
     var warmupFor by remember { mutableStateOf<Long?>(null) }
     var platesFor by remember { mutableStateOf<Long?>(null) }
     var supersetFor by remember { mutableStateOf<Long?>(null) }
+    var repRangeFor by remember { mutableStateOf<Long?>(null) }
     val unit = LocalWeightUnit.current
 
     Column(
@@ -387,7 +651,8 @@ fun WorkoutEditor(
                     restSeconds = defaultRestSeconds?.let { entry.restSeconds ?: it },
                     viewModel = viewModel,
                     onExerciseClick = onExerciseClick,
-                    onWarmup = settings?.takeUnless { entry.exercise.isTimed }?.let { { warmupFor = entry.id } },
+                    onWarmup = settings?.takeUnless { entry.exercise.isTimed || !entry.exercise.takesWeight }
+                        ?.let { { warmupFor = entry.id } },
                     onPlates = settings?.takeIf { entry.exercise.equipment.usesBar }?.let { { platesFor = entry.id } },
                     onReorder = onReorder,
                     onReplace = {
@@ -403,6 +668,7 @@ fun WorkoutEditor(
                         }
                     },
                     onAddToSuperset = { supersetFor = entry.id },
+                    onRepRange = { repRangeFor = entry.id },
                     onRemove = {
                         confirmation = Confirmation(
                             title = "Remove ${entry.exercise.name}?",
@@ -429,6 +695,18 @@ fun WorkoutEditor(
     }
 
     confirmation?.let { ConfirmationDialog(it, onDismiss = { confirmation = null }) }
+    workout.exercises.find { it.id == repRangeFor }?.let { entry ->
+        RepRangeDialog(
+            name = entry.exercise.name,
+            repsMin = entry.targetRepsMin,
+            repsMax = entry.targetRepsMax,
+            onSave = { min, max ->
+                repRangeFor = null
+                viewModel.updateRepTarget(entry.id, min, max)
+            },
+            onDismiss = { repRangeFor = null },
+        )
+    }
     val supersetEntry = workout.exercises.find { it.id == supersetFor }
     if (supersetEntry != null) {
         SupersetDialog(
@@ -489,6 +767,7 @@ private fun LazyListScope.exerciseSection(
     onReorder: () -> Unit,
     onReplace: () -> Unit,
     onAddToSuperset: () -> Unit,
+    onRepRange: () -> Unit,
     onRemove: () -> Unit,
 ) {
     val partners = workout.supersetPartners(entry)
@@ -522,6 +801,7 @@ private fun LazyListScope.exerciseSection(
                     onReorder = onReorder,
                     onReplace = onReplace,
                     onAddToSuperset = onAddToSuperset,
+                    onRepRange = onRepRange.takeUnless { entry.exercise.isTimed },
                     onRemoveFromSuperset = { viewModel.removeFromSuperset(entry.id) },
                     onRemove = onRemove,
                 )
@@ -545,6 +825,7 @@ private fun LazyListScope.exerciseSection(
                     )
                 }
             }
+            ExerciseNotes(entry.notes, entry.exercise.name) { viewModel.updateNotes(entry.id, it) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 restSeconds?.let { seconds ->
                     RestTimerControl(
@@ -558,7 +839,11 @@ private fun LazyListScope.exerciseSection(
             formatRepsTarget(entry.targetRepsMin, entry.targetRepsMax)?.takeUnless { entry.exercise.isTimed }?.let { target ->
                 Text(
                     text = "Target: $target reps",
-                    modifier = Modifier.padding(start = 20.dp, bottom = 4.dp),
+                    modifier = Modifier
+                        .padding(start = 16.dp, bottom = 4.dp)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClick = onRepRange)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -568,7 +853,7 @@ private fun LazyListScope.exerciseSection(
                 hasTimer = entry.exercise.isTimed && viewModel.setTimer != null,
                 number = { ColumnLabel("Set") },
                 previous = { ColumnLabel("Previous") },
-                weight = { ColumnLabel(unit.label, TextAlign.Center) },
+                weight = { if (entry.exercise.takesWeight) ColumnLabel(unit.label, TextAlign.Center) },
                 reps = { ColumnLabel(if (entry.exercise.isTimed) "Time" else "Reps", TextAlign.Center) },
                 actions = {},
             )
@@ -584,6 +869,7 @@ private fun LazyListScope.exerciseSection(
             set = set,
             isRecord = set.id in recordSetIds,
             isTimed = entry.exercise.isTimed,
+            takesWeight = entry.exercise.takesWeight,
             previous = if (set.isWarmup) null else previous.getOrNull(workIndex),
             hint = if (set.isWarmup) null else setHint(workSets, workIndex, previous, entry.targetRepsMin.takeUnless { entry.exercise.isTimed }),
             unit = unit,
@@ -612,6 +898,7 @@ private fun ExerciseMenu(
     onReorder: () -> Unit,
     onReplace: () -> Unit,
     onAddToSuperset: () -> Unit,
+    onRepRange: (() -> Unit)?,
     onRemoveFromSuperset: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -636,6 +923,7 @@ private fun ExerciseMenu(
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             Option("Reorder exercises", enabled = hasOtherExercises, action = onReorder)
             Option("Replace exercise", action = onReplace)
+            onRepRange?.let { Option("Set rep range", action = it) }
             if (inSuperset) {
                 Option("Remove from superset", action = onRemoveFromSuperset)
             } else {
@@ -760,6 +1048,7 @@ private fun SetRow(
     set: WorkoutSet,
     isRecord: Boolean,
     isTimed: Boolean,
+    takesWeight: Boolean,
     previous: LoggedSet?,
     hint: SetHint?,
     unit: WeightUnit,
@@ -796,7 +1085,7 @@ private fun SetRow(
     val rest = restSeconds.takeUnless { set.isWarmup }
 
     fun complete(seconds: Int?) {
-        val weight = parseWeight(weightText, unit) ?: hint?.weightKg
+        val weight = if (takesWeight) parseWeight(weightText, unit) ?: hint?.weightKg else null
         if (isTimed) {
             viewModel.completeSet(set.id, weight, null, rest, seconds)
         } else {
@@ -830,7 +1119,7 @@ private fun SetRow(
             )
         },
         weight = {
-            NumberField(
+            if (takesWeight) NumberField(
                 value = weightText,
                 placeholder = shown(hint?.weightKg),
                 description = "Weight for $name",

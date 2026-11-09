@@ -10,6 +10,8 @@ enum class Equipment(val label: String) {
     Machine("Machine"),
     SmithMachine("Smith machine"),
     Bodyweight("Bodyweight"),
+    /** Bodyweight with added weight, such as a dip belt, a vest or a plate held to the chest. */
+    Weighted("Weighted"),
     Band("Band"),
 }
 
@@ -32,4 +34,8 @@ data class Exercise(
     val notes: String? = null,
     /** Tracked by time, like a plank or a hang, rather than by reps. */
     val isTimed: Boolean = false,
-)
+) {
+    /** Plain bodyweight exercises have no weight to log. Their weighted versions do. */
+    val takesWeight: Boolean
+        get() = equipment != Equipment.Bodyweight
+}

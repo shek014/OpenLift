@@ -25,6 +25,28 @@ class AppSettings(context: Context) {
     val weightUnit: StateFlow<WeightUnit> = weightUnitState.asStateFlow()
     val lengthUnit: StateFlow<LengthUnit> = lengthUnitState.asStateFlow()
 
+    private val recordSoundState = MutableStateFlow(savedSound(RecordSoundKey, Sound.Fanfare))
+    private val restSoundState = MutableStateFlow(savedSound(RestSoundKey, Sound.Chime))
+
+    /** Played when a set breaks a personal record. */
+    val recordSound: StateFlow<Sound> = recordSoundState.asStateFlow()
+
+    /** Played when the rest timer runs out. */
+    val restSound: StateFlow<Sound> = restSoundState.asStateFlow()
+
+    fun setRecordSound(sound: Sound) {
+        preferences.edit { putString(RecordSoundKey, sound.name) }
+        recordSoundState.value = sound
+    }
+
+    fun setRestSound(sound: Sound) {
+        preferences.edit { putString(RestSoundKey, sound.name) }
+        restSoundState.value = sound
+    }
+
+    private fun savedSound(key: String, default: Sound) =
+        Sound.entries.find { it.name == preferences.getString(key, null) } ?: default
+
     private val showBmiState = MutableStateFlow(preferences.getBoolean(ShowBmiKey, false))
 
     /** BMI is off until someone turns it on. */
@@ -64,7 +86,8 @@ class AppSettings(context: Context) {
     }
 
     companion object {
-        const val DefaultRestSeconds = 90
+        /** The rest timer is off for an exercise until it's turned on. */
+        const val DefaultRestSeconds = 0
 
         /** The choices for a single exercise, where 0 turns the timer off. */
         val ExerciseRestSecondsChoices = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
@@ -72,6 +95,8 @@ class AppSettings(context: Context) {
         private const val DarkThemeKey = "dark_theme"
         private const val WeightUnitKey = "weight_unit"
         private const val ShowBmiKey = "show_bmi"
+        private const val RecordSoundKey = "record_sound"
+        private const val RestSoundKey = "rest_sound"
         private const val LengthUnitKey = "length_unit"
         private const val BarWeightKey = "bar_weight_"
         private const val AskedForNotificationsKey = "asked_for_notifications"

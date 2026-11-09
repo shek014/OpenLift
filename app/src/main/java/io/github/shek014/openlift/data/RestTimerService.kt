@@ -88,7 +88,9 @@ class RestTimerService : Service() {
 
 object RestNotifications {
     const val CountdownChannel = "rest_countdown"
-    private const val RestOverChannel = "rest_over"
+    // The app plays its own sound now, so this channel is silent. The old one had a sound.
+    private const val RestOverChannel = "rest_over_quiet"
+    private const val RemovedRestOverChannel = "rest_over"
     private const val RestOverNotificationId = 2
     private const val RestOverTimeoutMillis = 60_000L
     private const val RemovedRecordChannel = "personal_records"
@@ -96,6 +98,7 @@ object RestNotifications {
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.deleteNotificationChannel(RemovedRecordChannel)
+        manager.deleteNotificationChannel(RemovedRestOverChannel)
         manager.createNotificationChannel(
             NotificationChannel(
                 CountdownChannel,
@@ -108,7 +111,10 @@ object RestNotifications {
                 RestOverChannel,
                 context.getString(R.string.rest_over_channel),
                 NotificationManager.IMPORTANCE_HIGH,
-            ).apply { enableVibration(true) },
+            ).apply {
+                enableVibration(true)
+                setSound(null, null)
+            },
         )
     }
 

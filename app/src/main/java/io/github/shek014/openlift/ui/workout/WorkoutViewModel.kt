@@ -10,12 +10,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
+import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.RoutineRepository
+import io.github.shek014.openlift.data.SoundPlayer
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
 import io.github.shek014.openlift.data.model.Routine
+import io.github.shek014.openlift.data.model.differsFrom
+import io.github.shek014.openlift.data.model.plannedExercises
 import io.github.shek014.openlift.data.model.SetType
 import io.github.shek014.openlift.data.model.orderForSuperset
 import io.github.shek014.openlift.data.model.recordSetIds
@@ -26,7 +30,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** The name of the navigation argument that says which workout to show. */
@@ -34,6 +43,17 @@ const val WorkoutIdArg = "workoutId"
 
 /** A stopwatch timing a set. [startedAt] comes from the elapsed-time clock, which can't be changed. */
 data class SetTimer(val setId: Long, val startedAt: Long)
+
+/** A stopwatch for anything. [startedAt] is from the elapsed-time clock, or null while it's paused. */
+data class Stopwatch(val startedAt: Long? = null, val elapsedBefore: Long = 0) {
+    fun elapsedMillis(now: Long): Long = elapsedBefore + (startedAt?.let { now - it } ?: 0)
+}
+
+/** What to do with the routine a workout came from, when the workout was changed. */
+sealed interface RoutineUpdate {
+    data class Replace(val routine: Routine) : RoutineUpdate
+    data class SaveAsNew(val name: String) : RoutineUpdate
+}
 
 data class WorkoutUiState(
     val workout: Workout?,
@@ -79,6 +99,12 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
 
     fun removeFromSuperset(workoutExerciseId: Long) = run { setSuperset(listOf(workoutExerciseId), null) }
 
+    fun updateNotes(workoutExerciseId: Long, notes: String) =
+        run { updateNotes(workoutExerciseId, notes.trim().ifEmpty { null }) }
+
+    fun updateRepTarget(workoutExerciseId: Long, repsMin: Int?, repsMax: Int?) =
+        run { updateRepTarget(workoutExerciseId, repsMin, repsMax) }
+
     fun addSet(workoutExerciseId: Long) = run { addSet(workoutExerciseId) }
 
     /** Adds warm-up sets given as weight in kilograms and reps. */
@@ -117,8 +143,28 @@ class WorkoutViewModel(
     repository: WorkoutRepository,
     private val restTimer: RestTimer,
     private val routineRepository: RoutineRepository,
+    private val settings: AppSettings,
+    private val soundPlayer: SoundPlayer,
 ) : WorkoutEditorViewModel(repository) {
     private val timer = MutableStateFlow<SetTimer?>(null)
+    private val stopwatchState = MutableStateFlow(Stopwatch())
+
+    val stopwatch: StateFlow<Stopwatch> = stopwatchState.asStateFlow()
+
+    fun startStopwatch() {
+        stopwatchState.update { if (it.startedAt == null) it.copy(startedAt = SystemClock.elapsedRealtime()) else it }
+    }
+
+    fun pauseStopwatch() {
+        stopwatchState.update { Stopwatch(elapsedBefore = it.elapsedMillis(SystemClock.elapsedRealtime())) }
+    }
+
+    fun resetStopwatch() {
+        stopwatchState.value = Stopwatch()
+    }
+
+    /** Counts down like the rest timer, with the same bar and sound. */
+    fun startTimer(seconds: Int) = restTimer.start(seconds)
 
     override val setTimer: StateFlow<SetTimer?> = timer.asStateFlow()
 
@@ -146,6 +192,28 @@ class WorkoutViewModel(
 
     val restSeconds: StateFlow<Int?> = restTimer.secondsRemaining
 
+    init {
+        // Plays the record sound when a set newly breaks a record, but not for the ones already
+        // showing when the workout opens.
+        viewModelScope.launch {
+            var seen: Set<Long>? = null
+            state.filterNotNull().map { it.recordSetIds }.distinctUntilChanged().collect { records ->
+                val before = seen
+                if (before != null && (records - before).isNotEmpty()) soundPlayer.play(settings.recordSound.value)
+                seen = records
+            }
+        }
+    }
+
+    /** The routine this workout came from, if it no longer matches it. */
+    fun checkRoutine(onResult: (Routine?) -> Unit) {
+        viewModelScope.launch {
+            val workout = state.value?.workout
+            val routine = workout?.routineId?.let { routineRepository.routine(it).first() }
+            onResult(routine?.takeIf { it.differsFrom(workout) })
+        }
+    }
+
     fun startWorkout() = run { startWorkout() }
 
     override suspend fun insertExercise(exerciseId: String) = repository.addExercise(exerciseId)
@@ -165,14 +233,27 @@ class WorkoutViewModel(
     fun discardWorkout() {
         restTimer.stop()
         timer.value = null
+        resetStopwatch()
         run { discardActiveWorkout() }
     }
 
-    /** Calls [onSaved] with the saved workout's id, or null if there was nothing to save. */
-    fun finishWorkout(onSaved: (Long?) -> Unit) {
+    /**
+     * Calls [onSaved] with the saved workout's id, or null if there was nothing to save. The routine
+     * is updated first, since finishing drops any sets that weren't checked off.
+     */
+    fun finishWorkout(routineUpdate: RoutineUpdate? = null, onSaved: (Long?) -> Unit) {
         restTimer.stop()
         timer.value = null
-        viewModelScope.launch { onSaved(repository.finishActiveWorkout()) }
+        resetStopwatch()
+        val plan = state.value?.workout?.plannedExercises().orEmpty()
+        viewModelScope.launch {
+            when (routineUpdate) {
+                is RoutineUpdate.Replace -> routineRepository.updateRoutine(routineUpdate.routine.id, routineUpdate.routine.name, plan)
+                is RoutineUpdate.SaveAsNew -> routineRepository.createRoutine(routineUpdate.name, plan)
+                null -> Unit
+            }
+            onSaved(repository.finishActiveWorkout())
+        }
     }
 
     companion object {
@@ -183,6 +264,8 @@ class WorkoutViewModel(
                     application.workoutRepository,
                     application.restTimer,
                     application.routineRepository,
+                    application.settings,
+                    application.soundPlayer,
                 )
             }
         }

@@ -10,6 +10,7 @@ import io.github.shek014.openlift.data.model.Equipment.EzBar
 import io.github.shek014.openlift.data.model.Equipment.Kettlebell
 import io.github.shek014.openlift.data.model.Equipment.Machine
 import io.github.shek014.openlift.data.model.Equipment.SmithMachine
+import io.github.shek014.openlift.data.model.Equipment.Weighted
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.Muscle
 import io.github.shek014.openlift.data.model.Muscle.Abductors
@@ -50,6 +51,17 @@ private fun variation(
     drawing: String?,
     vararg steps: String,
 ) = ExerciseVariation(Exercise(id, name, equipment, primary, secondary), steps.toList(), drawing)
+
+/** A hold measured by time, like a plank, rather than by reps. */
+private fun timedVariation(
+    id: String,
+    name: String,
+    equipment: Equipment,
+    primary: List<Muscle>,
+    secondary: List<Muscle>,
+    drawing: String?,
+    vararg steps: String,
+) = ExerciseVariation(Exercise(id, name, equipment, primary, secondary, isTimed = true), steps.toList(), drawing)
 
 private fun pushdown(id: String, name: String, equipment: Equipment, drawing: String?, setup: String, press: String) =
     variation(
@@ -186,7 +198,7 @@ private val ChestVariations = listOf(
         "Press back up against the band until your arms are straight.",
     ),
     variation(
-        "weighted_chest_dip", "Weighted Chest Dip", Bodyweight, listOf(LowerChest), listOf(Triceps, FrontDelts), "chest_dip",
+        "weighted_chest_dip", "Chest Dip (Weighted)", Weighted, listOf(LowerChest), listOf(Triceps, FrontDelts), "chest_dip",
         "Add weight with a dip belt, then hold yourself up on the bars with your arms straight.",
         "Lean forward and lower yourself until you feel a stretch in your chest.",
         "Press back up until your arms are straight.",
@@ -213,7 +225,7 @@ private val BackVariations = listOf(
         "Lower yourself slowly until your arms are straight.",
     ),
     variation(
-        "weighted_pull_up", "Weighted Pull-Up", Bodyweight, listOf(Lats), listOf(Biceps, MidBack), "pull_up",
+        "weighted_pull_up", "Pull-Up (Weighted)", Weighted, listOf(Lats), listOf(Biceps, MidBack), "pull_up",
         "Add weight with a dip belt, then hang from the bar with your hands wider than your shoulders.",
         "Pull yourself up until your chin clears the bar.",
         "Lower yourself slowly until your arms are straight.",
@@ -231,7 +243,7 @@ private val BackVariations = listOf(
         "Lower yourself slowly until your arms are straight.",
     ),
     variation(
-        "weighted_chin_up", "Weighted Chin-Up", Bodyweight, listOf(Lats, Biceps), listOf(MidBack), "chin_up",
+        "weighted_chin_up", "Chin-Up (Weighted)", Weighted, listOf(Lats, Biceps), listOf(MidBack), "chin_up",
         "Add weight with a dip belt, then hang from the bar with your palms facing you.",
         "Pull yourself up until your chin clears the bar.",
         "Lower yourself slowly until your arms are straight.",
@@ -411,7 +423,7 @@ private val BackVariations = listOf(
         "Drive your hips forward to stand up.",
     ),
     variation(
-        "weighted_back_extension", "Weighted Back Extension", Dumbbell, listOf(LowerBack), listOf(Glutes, Hamstrings), "back_extension",
+        "weighted_back_extension", "Back Extension (Weighted)", Weighted, listOf(LowerBack), listOf(Glutes, Hamstrings), "back_extension",
         "Set up on a back extension bench, holding a dumbbell or plate against your chest.",
         "Lower your upper body until you feel a stretch in your hamstrings.",
         "Raise yourself until your body is straight, without arching further.",
@@ -788,7 +800,7 @@ private val TricepsVariations = listOf(
         "Press back up until your arms are straight.",
     ),
     variation(
-        "weighted_triceps_dip", "Weighted Triceps Dip", Bodyweight, listOf(Triceps), listOf(LowerChest, FrontDelts), "chest_dip",
+        "weighted_triceps_dip", "Triceps Dip (Weighted)", Weighted, listOf(Triceps), listOf(LowerChest, FrontDelts), "chest_dip",
         "Add weight with a dip belt, then hold yourself up on the bars with your body upright.",
         "Bend your elbows to lower yourself, keeping them close to your sides.",
         "Press back up until your arms are straight.",
@@ -854,7 +866,7 @@ private val ForearmVariations = listOf(
 
 private val CoreVariations = listOf(
     variation(
-        "weighted_crunch", "Weighted Crunch", Dumbbell, listOf(Abs), emptyList(), "crunch",
+        "weighted_crunch", "Crunch (Weighted)", Weighted, listOf(Abs), emptyList(), "crunch",
         "Lie on your back with your knees bent, holding a dumbbell or plate against your chest.",
         "Curl your shoulders up off the floor by tightening your abs.",
         "Lower yourself slowly.",
@@ -914,7 +926,7 @@ private val CoreVariations = listOf(
         "Finish your reps, then switch sides.",
     ),
     variation(
-        "weighted_russian_twist", "Weighted Russian Twist", Dumbbell, listOf(Obliques), listOf(Abs), null,
+        "weighted_russian_twist", "Russian Twist (Weighted)", Weighted, listOf(Obliques), listOf(Abs), null,
         "Sit leaning back slightly with your knees bent, holding a dumbbell or plate at your chest.",
         "Turn your torso to one side, then the other.",
         "Keep your back straight and keep alternating.",
@@ -1206,6 +1218,108 @@ private val LegVariations = listOf(
     ),
 )
 
+private val LandmineVariations = listOf(
+    variation(
+        "landmine_row", "Landmine Row", Barbell, listOf(MidBack, Lats), listOf(RearDelts, Biceps), null,
+        "Wedge one end of a bar in a landmine and straddle the other end, then hinge forward and hold it with both hands.",
+        "Pull the end of the bar to your chest, squeezing your shoulder blades together.",
+        "Lower it slowly until your arms are straight.",
+    ),
+    variation(
+        "meadows_row", "Meadows Row (Landmine)", Barbell, listOf(Lats, MidBack), listOf(RearDelts, Biceps), null,
+        "Stand side-on to the end of a landmine bar in a staggered stance, and hold the end in your nearer hand.",
+        "Pull it up beside your hip, driving your elbow back and up.",
+        "Lower it slowly, then finish your reps and switch sides.",
+    ),
+    variation(
+        "landmine_squat", "Landmine Squat", Barbell, listOf(Quads, Glutes), listOf(Abs), null,
+        "Hold the end of a landmine bar at your chest with both hands, your feet at about shoulder width.",
+        "Squat down until your thighs are level with the floor, keeping your chest up.",
+        "Stand back up through your whole foot.",
+    ),
+    variation(
+        "landmine_romanian_deadlift", "Landmine Romanian Deadlift", Barbell, listOf(Hamstrings, Glutes), listOf(LowerBack), null,
+        "Stand facing the end of a landmine bar and hold it in both hands with your arms straight.",
+        "Push your hips back and lower it until you feel a stretch in your hamstrings.",
+        "Drive your hips forward to stand up.",
+    ),
+    variation(
+        "landmine_reverse_lunge", "Landmine Reverse Lunge", Barbell, listOf(Quads, Glutes), listOf(Hamstrings), null,
+        "Hold the end of a landmine bar at your chest with both hands.",
+        "Step backward and lower your back knee toward the floor.",
+        "Push through your front foot to stand up, and alternate legs.",
+    ),
+    variation(
+        "landmine_thruster", "Landmine Thruster", Barbell, listOf(Quads, FrontDelts), listOf(Glutes, Triceps), null,
+        "Hold the end of a landmine bar at your chest with both hands.",
+        "Squat down, then drive up and press the bar up and forward as you stand.",
+        "Lower it back to your chest as you go into the next squat.",
+    ),
+    variation(
+        "landmine_lateral_raise", "Landmine Lateral Raise", Barbell, listOf(SideDelts), listOf(Traps), null,
+        "Stand side-on to the end of a landmine bar and hold the end in your farther hand, across your body.",
+        "Raise your arm out to the side until it's level with your shoulder.",
+        "Lower it slowly, then finish your reps and switch sides.",
+    ),
+    variation(
+        "half_kneeling_landmine_press", "Landmine Press (Half Kneeling)", Barbell, listOf(UpperChest, FrontDelts), listOf(Triceps, Abs), null,
+        "Kneel on one knee and hold the end of a landmine bar at your shoulder on the same side as that knee.",
+        "Press the bar up and forward until your arm is straight.",
+        "Lower it slowly, then finish your reps and switch sides.",
+    ),
+    variation(
+        "landmine_chest_press", "Landmine Chest Press", Barbell, listOf(MidChest, UpperChest), listOf(Triceps, FrontDelts), null,
+        "Stand facing the end of a landmine bar and hold it at your chest with both hands.",
+        "Press it forward and up until your arms are straight.",
+        "Lower it slowly back to your chest.",
+    ),
+)
+
+private val WeightedVariations = listOf(
+    variation(
+        "weighted_push_up", "Push-Up (Weighted)", Weighted, listOf(MidChest), listOf(FrontDelts, Triceps, Abs), "push_up",
+        "Wear a weighted vest, or have a plate placed across your upper back, and get into a push-up position.",
+        "Lower your chest toward the floor, keeping your body straight.",
+        "Press back up until your arms are straight.",
+    ),
+    variation(
+        "weighted_bench_dip", "Bench Dip (Weighted)", Weighted, listOf(Triceps), listOf(FrontDelts, LowerChest), "bench_dip",
+        "Sit on the edge of a bench with your hands beside your hips, and have a plate placed on your thighs.",
+        "Slide forward and bend your elbows to lower yourself.",
+        "Press back up until your arms are straight.",
+    ),
+    variation(
+        "weighted_hanging_leg_raise", "Hanging Leg Raise (Weighted)", Weighted, listOf(Abs), listOf(Obliques, Forearms), null,
+        "Hang from a bar with a light dumbbell held between your feet.",
+        "Raise your legs until they're level with the floor, without swinging.",
+        "Lower them slowly.",
+    ),
+    variation(
+        "weighted_decline_crunch", "Decline Crunch (Weighted)", Weighted, listOf(Abs), emptyList(), null,
+        "Secure your legs on a decline bench and lie back, holding a plate against your chest.",
+        "Curl your upper body toward your knees by tightening your abs.",
+        "Lower yourself slowly.",
+    ),
+    variation(
+        "weighted_inverted_row", "Inverted Row (Weighted)", Weighted, listOf(MidBack, Lats), listOf(RearDelts, Biceps), null,
+        "Wear a weighted vest, or rest a plate on your hips, and lie under a bar set at about waist height.",
+        "Pull your chest up to the bar, keeping your body straight.",
+        "Lower yourself slowly until your arms are straight.",
+    ),
+    timedVariation(
+        "weighted_plank", "Plank (Weighted)", Weighted, listOf(Abs), listOf(Obliques, LowerBack), null,
+        "Get into a plank on your forearms and have a plate placed on your upper back.",
+        "Keep your body straight from head to heels, without letting your hips sag.",
+        "Hold for as long as you can keep good form.",
+    ),
+    timedVariation(
+        "weighted_dead_hang", "Dead Hang (Weighted)", Weighted, listOf(Forearms), listOf(Lats), null,
+        "Add weight with a dip belt, then grip a pull-up bar with your hands about shoulder-width apart.",
+        "Hang with your arms straight and your shoulders active.",
+        "Hold for as long as your grip allows, then step down with control.",
+    ),
+)
+
 val ExerciseVariations: List<ExerciseVariation> =
     ChestVariations + BackVariations + ShoulderVariations + BicepsVariations + TricepsVariations +
-        ForearmVariations + CoreVariations + LegVariations
+        ForearmVariations + CoreVariations + LegVariations + LandmineVariations + WeightedVariations

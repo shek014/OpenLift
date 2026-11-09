@@ -61,6 +61,7 @@ class RoutineRepository(
         exerciseRepository.exercises.first()
         val row = routineDao.routine(routineId) ?: return false
         return workoutDao.startWorkoutFromRoutine(
+            routineId = routineId,
             name = row.routine.name,
             startedAt = now(),
             exercises = row.exercises.sortedBy { it.position },

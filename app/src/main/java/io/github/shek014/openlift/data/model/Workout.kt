@@ -46,6 +46,7 @@ data class WorkoutExercise(
     val targetRepsMax: Int? = null,
     /** Exercises with the same number here are done back to back as a superset. */
     val supersetId: Long? = null,
+    val notes: String? = null,
 ) {
     /** The completed sets that count, leaving out warm-ups. */
     val workSets: List<WorkoutSet>
@@ -59,6 +60,8 @@ data class Workout(
     val exercises: List<WorkoutExercise>,
     /** The name of the routine it was started from, if any. */
     val name: String? = null,
+    /** The routine it was started from, if any. */
+    val routineId: Long? = null,
 ) {
     /** The exercises that have something to show once unchecked sets are ignored. */
     val completedExercises: List<WorkoutExercise>
@@ -236,6 +239,7 @@ fun Workout.toShareText(unit: WeightUnit): String = buildString {
     completedExercises.forEach { entry ->
         appendLine()
         appendLine(entry.exercise.name)
+        entry.notes?.let { appendLine(it) }
         entry.workSets.forEachIndexed { index, set ->
             val type = if (set.setType == SetType.Normal) "" else " (${set.setType.label})"
             appendLine("${index + 1}. ${formatSet(set.weightKg, set.reps, unit, set.durationSeconds)}$type")
@@ -243,6 +247,33 @@ fun Workout.toShareText(unit: WeightUnit): String = buildString {
     }
     appendLine()
     append("Logged with OpenLift")
+}
+
+/**
+ * The workout as it's laid out, ticked off or not, as a routine would plan it. Comparing this with
+ * the routine it came from shows whether exercises, sets or rep ranges were changed along the way.
+ */
+fun Workout.plannedExercises(): List<Pair<String, ExercisePlan>> =
+    exercises.map { entry ->
+        entry.exercise.id to ExercisePlan(entry.sets.count { !it.isWarmup }, entry.targetRepsMin, entry.targetRepsMax)
+    }
+
+/** Whether the workout no longer matches the routine it was started from. */
+fun Routine.differsFrom(workout: Workout): Boolean =
+    exercises.map { it.exercise.id to it.plan } != workout.plannedExercises()
+
+/** Checks rep range input: blank means no target, and the highest can't be below the lowest. */
+fun parseRepRange(minText: String, maxText: String): Pair<Int?, Int?>? {
+    val min = minText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+    val max = maxText.trim().takeIf { it.isNotEmpty() }?.toIntOrNull()
+    if ((minText.isNotBlank() && (min == null || min <= 0)) || (maxText.isNotBlank() && (max == null || max <= 0))) return null
+    return when {
+        min == null && max == null -> null to null
+        min == null -> max to null
+        max == null || max == min -> min to null
+        max < min -> null
+        else -> min to max
+    }
 }
 
 /** What this workout would be as a routine: the same exercises, sets and range of reps. */

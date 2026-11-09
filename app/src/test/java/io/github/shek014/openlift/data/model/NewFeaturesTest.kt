@@ -683,3 +683,72 @@ class BackupFileTest {
         assertTrue(!hasDatabaseHeader(ByteArray(0)))
     }
 }
+
+class AssessmentTwoTest {
+    private val bench = Exercise("bench", "Bench Press", Equipment.Barbell, listOf(Muscle.MidChest), listOf(Muscle.Triceps))
+    private val squat = Exercise("squat", "Squat", Equipment.Barbell, listOf(Muscle.Quads))
+
+    private fun entry(id: Long, exercise: Exercise, sets: Int, completed: Boolean = true, min: Int? = null, max: Int? = null) =
+        WorkoutExercise(id, exercise, List(sets) { WorkoutSet(id * 10 + it, 50.0, 8, completed = completed) }, targetRepsMin = min, targetRepsMax = max)
+
+    private fun workout(vararg entries: WorkoutExercise) =
+        Workout(id = 1, startedAt = 0, finishedAt = null, exercises = entries.toList(), routineId = 3)
+
+    private val routine = Routine(3, "Push", listOf(RoutineExercise(bench, ExercisePlan(3, 8, 12))))
+
+    @Test
+    fun `a workout matching its routine isn't a change, even with sets left unticked`() {
+        assertTrue(!routine.differsFrom(workout(entry(1, bench, 3, completed = false, min = 8, max = 12))))
+    }
+
+    @Test
+    fun `different sets, rep ranges or exercises are changes`() {
+        assertTrue(routine.differsFrom(workout(entry(1, bench, 4, min = 8, max = 12))))
+        assertTrue(routine.differsFrom(workout(entry(1, bench, 3, min = 6, max = 8))))
+        assertTrue(routine.differsFrom(workout(entry(1, squat, 3, min = 8, max = 12))))
+        assertTrue(routine.differsFrom(workout(entry(1, bench, 3, min = 8, max = 12), entry(2, squat, 3))))
+    }
+
+    @Test
+    fun `warm-ups don't change the planned sets`() {
+        val withWarmup = WorkoutExercise(
+            1, bench,
+            listOf(WorkoutSet(1, 20.0, 10, completed = true, setType = SetType.Warmup)) + List(3) { WorkoutSet(2L + it, 50.0, 8, completed = false) },
+            targetRepsMin = 8, targetRepsMax = 12,
+        )
+        assertTrue(!routine.differsFrom(workout(withWarmup)))
+    }
+
+    @Test
+    fun `rep ranges read from what was typed`() {
+        assertEquals(8 to 12, parseRepRange("8", "12"))
+        assertEquals(10 to null, parseRepRange("10", ""))
+        assertEquals(10 to null, parseRepRange("10", "10"))
+        assertEquals(null to null, parseRepRange("", " "))
+        assertEquals(12 to null, parseRepRange("", "12"))
+        assertNull(parseRepRange("12", "8"))
+        assertNull(parseRepRange("0", "5"))
+    }
+
+    @Test
+    fun `muscle split shares each set between the muscles it works`() {
+        val split = muscleSplit(listOf(entry(1, bench, 3), entry(2, squat, 3)))
+
+        assertEquals(listOf(MuscleGroup.Legs, MuscleGroup.Chest, MuscleGroup.Triceps), split.map { it.first })
+        assertEquals(0.5, split[0].second, 0.001)
+        assertEquals(1.0 / 3, split[1].second, 0.001)
+        assertEquals(1.0, split.sumOf { it.second }, 0.001)
+    }
+
+    @Test
+    fun `muscle split leaves out unfinished exercises`() {
+        assertEquals(emptyList<Pair<MuscleGroup, Double>>(), muscleSplit(listOf(entry(1, bench, 3, completed = false))))
+    }
+
+    @Test
+    fun `bodyweight exercises take no weight, but their weighted versions do`() {
+        val pushUp = Exercise("push_up", "Push-Up", Equipment.Bodyweight, listOf(Muscle.MidChest))
+        assertTrue(!pushUp.takesWeight)
+        assertTrue(pushUp.copy(equipment = Equipment.Weighted).takesWeight)
+    }
+}

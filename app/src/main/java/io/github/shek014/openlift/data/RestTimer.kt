@@ -19,7 +19,11 @@ import kotlinx.coroutines.launch
  * Counts down the rest between sets. While it runs, [RestTimerService] keeps the app alive with a
  * notification, so that it still alerts someone who has left the app or turned off the screen.
  */
-class RestTimer(private val context: Context, private val scope: CoroutineScope) {
+class RestTimer(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val onFinished: () -> Unit = {},
+) {
     private val vibrator = context.getSystemService(Vibrator::class.java)
     private val remaining = MutableStateFlow<Int?>(null)
     private var job: Job? = null
@@ -64,6 +68,7 @@ class RestTimer(private val context: Context, private val scope: CoroutineScope)
         remaining.value = null
         stopService()
         vibrator?.vibrate(VibrationEffect.createOneShot(600, VibrationEffect.DEFAULT_AMPLITUDE))
+        onFinished()
         val inForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         if (!inForeground) RestNotifications.showRestOver(context)
     }

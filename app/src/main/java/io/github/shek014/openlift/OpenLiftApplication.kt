@@ -16,6 +16,7 @@ import io.github.shek014.openlift.data.ExerciseRepository
 import io.github.shek014.openlift.data.MeasurementRepository
 import io.github.shek014.openlift.data.RestTimer
 import io.github.shek014.openlift.data.RoutineRepository
+import io.github.shek014.openlift.data.SoundPlayer
 import io.github.shek014.openlift.data.WorkoutRepository
 import io.github.shek014.openlift.data.local.OpenLiftDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +39,9 @@ class OpenLiftApplication : Application(), SingletonImageLoader.Factory {
 
     val measurementRepository by lazy { MeasurementRepository(database.measurementDao()) }
 
-    val restTimer by lazy { RestTimer(this, applicationScope) }
+    val soundPlayer by lazy { SoundPlayer(this) }
+
+    val restTimer by lazy { RestTimer(this, applicationScope) { soundPlayer.play(settings.restSound.value) } }
 
     val exerciseMedia by lazy { ExerciseMedia(assets) }
 
