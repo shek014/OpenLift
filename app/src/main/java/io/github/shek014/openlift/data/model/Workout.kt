@@ -118,6 +118,46 @@ fun setHint(sets: List<WorkoutSet>, index: Int, previous: List<LoggedSet>, targe
         ?: targetReps?.let { SetHint(null, it) }
 }
 
+/**
+ * The set the big button at the bottom of the workout logs next: the first one not yet checked off,
+ * with the numbers that checking it off would use, typed or suggested.
+ */
+data class NextSet(
+    val entry: WorkoutExercise,
+    val set: WorkoutSet,
+    /** 1-based among the exercise's work sets, or null for a warm-up. */
+    val number: Int?,
+    val weightKg: Double?,
+    val reps: Int?,
+    val durationSeconds: Int?,
+) {
+    val canLog: Boolean
+        get() = if (entry.exercise.isTimed) durationSeconds != null else reps != null
+}
+
+fun nextSet(workout: Workout, previous: Map<String, List<LoggedSet>>): NextSet? {
+    workout.exercises.forEach { entry ->
+        val set = entry.sets.firstOrNull { !it.completed } ?: return@forEach
+        val workSets = entry.sets.filterNot { it.isWarmup }
+        val index = workSets.indexOf(set)
+        val timed = entry.exercise.isTimed
+        val hint = if (set.isWarmup) {
+            null
+        } else {
+            setHint(workSets, index, previous[entry.exercise.id].orEmpty(), entry.targetRepsMin.takeUnless { timed })
+        }
+        return NextSet(
+            entry = entry,
+            set = set,
+            number = if (set.isWarmup) null else index + 1,
+            weightKg = if (entry.exercise.takesWeight) set.weightKg ?: hint?.weightKg else null,
+            reps = if (timed) null else set.reps ?: hint?.reps,
+            durationSeconds = if (timed) set.durationSeconds ?: hint?.durationSeconds else null,
+        )
+    }
+    return null
+}
+
 /** Accepts up to four digits and two decimals while someone is typing, with . or , as the point. */
 fun isValidWeightInput(text: String): Boolean = Regex("""\d{0,4}([.,]\d{0,2})?""").matches(text)
 

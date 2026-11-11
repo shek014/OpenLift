@@ -7,6 +7,7 @@ import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -88,6 +89,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.shek014.openlift.data.AppSettings
 import io.github.shek014.openlift.data.model.Exercise
 import io.github.shek014.openlift.data.model.LoggedSet
+import io.github.shek014.openlift.data.model.NextSet
 import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.SetHint
 import io.github.shek014.openlift.data.model.SetType
@@ -99,11 +101,13 @@ import io.github.shek014.openlift.data.model.formatDuration
 import io.github.shek014.openlift.data.model.formatRepsTarget
 import io.github.shek014.openlift.data.model.formatRest
 import io.github.shek014.openlift.data.model.formatSet
+import io.github.shek014.openlift.data.model.formatVolume
 import io.github.shek014.openlift.data.model.formatWeight
 import io.github.shek014.openlift.data.model.isRoutineNameTaken
 import io.github.shek014.openlift.data.model.isValidDurationInput
 import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.data.model.isValidWeightInput
+import io.github.shek014.openlift.data.model.nextSet
 import io.github.shek014.openlift.data.model.parseDuration
 import io.github.shek014.openlift.data.model.parseRepRange
 import io.github.shek014.openlift.data.model.parseReps
@@ -255,6 +259,31 @@ private fun ActiveWorkout(
     val finish = { update: RoutineUpdate? ->
         viewModel.finishWorkout(update) { id -> if (id != null) onWorkoutSaved(id) }
     }
+    val unit = LocalWeightUnit.current
+    val setTimer by viewModel.setTimer.collectAsStateWithLifecycle()
+    val next = remember(workout, previousSets) { nextSet(workout, previousSets) }
+    val askToFinish = {
+        val completed = workout.completedSets.size
+        confirmation = if (completed == 0) {
+            Confirmation(
+                title = "Nothing to save",
+                message = "You haven't completed any sets yet. Discard this workout?",
+                confirmLabel = "Discard",
+                onConfirm = viewModel::discardWorkout,
+            )
+        } else {
+            Confirmation(
+                title = "Finish workout?",
+                message = "Saves ${setCount(completed)}. Any sets you haven't checked off won't be saved.",
+                confirmLabel = "Finish",
+                onConfirm = {
+                    viewModel.checkRoutine { routine ->
+                        if (routine == null) finish(null) else changedRoutine = routine
+                    }
+                },
+            )
+        }
+    }
 
     AskForNotificationsOnce(settings)
 
@@ -293,33 +322,11 @@ private fun ActiveWorkout(
         },
         actions = {
             ClockButton(stopwatch) { showingClock = true }
-            TextButton(
-                onClick = {
-                    val completed = workout.completedSets.size
-                    confirmation = if (completed == 0) {
-                        Confirmation(
-                            title = "Nothing to save",
-                            message = "You haven't completed any sets yet. Discard this workout?",
-                            confirmLabel = "Discard",
-                            onConfirm = viewModel::discardWorkout,
-                        )
-                    } else {
-                        Confirmation(
-                            title = "Finish workout?",
-                            message = "Saves ${setCount(completed)}. Any sets you haven't checked off won't be saved.",
-                            confirmLabel = "Finish",
-                            onConfirm = {
-                                viewModel.checkRoutine { routine ->
-                                    if (routine == null) finish(null) else changedRoutine = routine
-                                }
-                            },
-                        )
-                    }
-                },
-            ) {
+            TextButton(onClick = askToFinish) {
                 Text("Finish")
             }
         },
+        nextSetId = next?.set?.id,
         onAddExercise = onAddExercise,
         onReorder = onReorder,
         onReplace = onReplace,
@@ -340,11 +347,34 @@ private fun ActiveWorkout(
             }
         },
         bottomBar = {
-            restSeconds?.let { seconds ->
-                RestBar(
-                    seconds = seconds,
+            val resting = restSeconds
+            when {
+                resting != null -> RestBar(
+                    seconds = resting,
+                    nextLabel = next?.let { "Next: ${it.entry.exercise.name}, ${it.label()}" },
                     onAdjust = viewModel::adjustRest,
                     onSkip = viewModel::skipRest,
+                )
+                workout.exercises.isNotEmpty() -> SetDoneBar(
+                    next = next,
+                    unit = unit,
+                    timer = setTimer,
+                    workout = workout,
+                    onLog = { target ->
+                        val rest = (workout.restSeconds ?: globalRestSeconds)
+                            .let { target.entry.restSeconds ?: it }
+                            .takeIf { workout.restsAfter(target.entry) && !target.set.isWarmup }
+                        viewModel.completeSet(target.set.id, target.weightKg, target.reps, rest, target.durationSeconds)
+                    },
+                    onStartTimer = { viewModel.startSetTimer(it.set.id) },
+                    onStopTimer = { target ->
+                        val seconds = viewModel.stopSetTimer() ?: return@SetDoneBar
+                        val rest = (workout.restSeconds ?: globalRestSeconds)
+                            .let { target.entry.restSeconds ?: it }
+                            .takeIf { workout.restsAfter(target.entry) }
+                        viewModel.completeSet(target.set.id, target.weightKg, null, rest, seconds)
+                    },
+                    onFinish = askToFinish,
                 )
             }
         },
@@ -384,6 +414,121 @@ private fun ActiveWorkout(
         ClockSheet(viewModel = viewModel, stopwatch = stopwatch, onDismiss = { showingClock = false })
     }
 }
+
+/** The set as the bar names it: "set 2 of 3", or "warm-up 1". */
+private fun NextSet.label(): String {
+    val total = entry.sets.count { !it.isWarmup }
+    return if (number == null) "warm-up" else "set $number of $total"
+}
+
+/**
+ * A big button for the next set, so that logging doesn't need the small tick. While a timed set
+ * runs it shows the time, and once every set is done it offers to finish.
+ */
+@Composable
+private fun SetDoneBar(
+    next: NextSet?,
+    unit: WeightUnit,
+    timer: SetTimer?,
+    workout: Workout,
+    onLog: (NextSet) -> Unit,
+    onStartTimer: (NextSet) -> Unit,
+    onStopTimer: (NextSet) -> Unit,
+    onFinish: () -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            val timing = timer != null && timer.setId == next?.set?.id
+            Column(modifier = Modifier.weight(1f)) {
+                when {
+                    next == null -> {
+                        Text(
+                            text = "All ${setCount(workout.completedSets.size)} done",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "${formatDuration(elapsedSeconds(workout.startedAt))} · ${formatVolume(workout.volumeKg, unit)}",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "${next.entry.exercise.name} · ${next.label()}" + if (timing) " · timing" else "",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = when {
+                                timing -> formatDuration(runningSeconds(timer!!.startedAt))
+                                !next.canLog -> if (next.entry.exercise.isTimed) "Enter a time first" else "Enter the reps first"
+                                else -> formatSet(next.weightKg, next.reps, unit, next.durationSeconds)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+            when {
+                next == null -> Button(onClick = onFinish, modifier = Modifier.height(52.dp)) { Text("Finish") }
+                timing -> Button(onClick = { onStopTimer(next) }, modifier = Modifier.height(52.dp)) {
+                    Icon(Icons.Filled.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Stop")
+                }
+                next.entry.exercise.isTimed -> Button(onClick = { onStartTimer(next) }, modifier = Modifier.height(52.dp)) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Start")
+                }
+                else -> Button(
+                    onClick = { onLog(next) },
+                    enabled = next.canLog,
+                    modifier = Modifier
+                        .height(52.dp)
+                        .semantics { contentDescription = "Set done: ${next.entry.exercise.name}, ${next.label()}" },
+                ) {
+                    Text("Set done")
+                }
+            }
+        }
+    }
+}
+
+/** Seconds since [startedAt] on the wall clock, kept up to date. */
+@Composable
+private fun elapsedSeconds(startedAt: Long): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(startedAt) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(1_000)
+        }
+    }
+    return ((now - startedAt) / 1000).coerceAtLeast(0)
+}
+
+/** Seconds since [startedAt] on the elapsed-time clock, kept up to date. */
+@Composable
+private fun runningSeconds(startedAt: Long): Long {
+    var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(startedAt) {
+        while (true) {
+            now = SystemClock.elapsedRealtime()
+            delay(200)
+        }
+    }
+    return ((now - startedAt) / 1000).coerceAtLeast(0)
+}
+
 
 /** Opens the timer and stopwatch. While the stopwatch runs, it shows the time instead. */
 @Composable
@@ -685,6 +830,7 @@ fun WorkoutEditor(
     extraActions: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     header: @Composable () -> Unit = {},
+    nextSetId: Long? = null,
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
     var warmupFor by remember { mutableStateOf<Long?>(null) }
@@ -709,6 +855,7 @@ fun WorkoutEditor(
                     entry = entry,
                     previous = previousSets[entry.exercise.id].orEmpty(),
                     recordSetIds = recordSetIds,
+                    nextSetId = nextSetId,
                     unit = unit,
                     restSeconds = defaultRestSeconds?.let { entry.restSeconds ?: it },
                     defaultRestSeconds = defaultRestSeconds,
@@ -834,6 +981,7 @@ private fun LazyListScope.exerciseSection(
     entry: WorkoutExercise,
     previous: List<LoggedSet>,
     recordSetIds: Set<Long>,
+    nextSetId: Long?,
     unit: WeightUnit,
     restSeconds: Int?,
     defaultRestSeconds: Int?,
@@ -970,6 +1118,7 @@ private fun LazyListScope.exerciseSection(
             number = if (set.isWarmup) null else workIndex + 1,
             set = set,
             isRecord = set.id in recordSetIds,
+            isNext = set.id == nextSetId,
             isTimed = entry.exercise.isTimed,
             takesWeight = entry.exercise.takesWeight,
             previous = if (set.isWarmup) null else previous.getOrNull(workIndex),
@@ -1211,6 +1360,7 @@ private fun SetRow(
     number: Int?,
     set: WorkoutSet,
     isRecord: Boolean,
+    isNext: Boolean,
     isTimed: Boolean,
     takesWeight: Boolean,
     previous: LoggedSet?,
@@ -1260,6 +1410,7 @@ private fun SetRow(
     SetColumns(
         modifier = Modifier
             .background(rowColor)
+            .then(if (isNext) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small) else Modifier)
             .padding(horizontal = 16.dp),
         hasTimer = isTimed && viewModel.setTimer != null,
         number = {
@@ -1508,7 +1659,7 @@ fun NumberField(
 }
 
 @Composable
-private fun RestBar(seconds: Int, onAdjust: (Int) -> Unit, onSkip: () -> Unit) {
+private fun RestBar(seconds: Int, nextLabel: String?, onAdjust: (Int) -> Unit, onSkip: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.primaryContainer) {
         Row(
             modifier = Modifier
@@ -1516,11 +1667,20 @@ private fun RestBar(seconds: Int, onAdjust: (Int) -> Unit, onSkip: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "Rest ${formatDuration(seconds.toLong())}",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                nextLabel?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                    )
+                }
+                Text(
+                    text = "Rest ${formatDuration(seconds.toLong())}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             val buttonColors = ButtonDefaults.textButtonColors(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             )

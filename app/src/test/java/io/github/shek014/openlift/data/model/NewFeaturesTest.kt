@@ -788,3 +788,62 @@ class RestChoiceTest {
         assertEquals(0, resolve(0, 120, 90))
     }
 }
+
+class NextSetTest {
+    private val bench = Exercise("bench", "Bench Press", Equipment.Barbell, listOf(Muscle.MidChest))
+    private val plank = Exercise("plank", "Plank", Equipment.Bodyweight, listOf(Muscle.Abs), isTimed = true)
+    private val pullUp = Exercise("pull_up", "Pull-Up", Equipment.Bodyweight, listOf(Muscle.Lats))
+
+    private fun workout(vararg entries: WorkoutExercise) = Workout(1, 0, null, entries.toList())
+
+    @Test
+    fun `the next set is the first one not checked off, with what the tick would log`() {
+        val entry = WorkoutExercise(
+            1, bench,
+            listOf(WorkoutSet(1, 60.0, 8, completed = true), WorkoutSet(2, null, null, completed = false), WorkoutSet(3, null, null, completed = false)),
+        )
+        val previous = mapOf("bench" to listOf(LoggedSet(9, 1, "bench", 60.0, 8), LoggedSet(9, 1, "bench", 62.5, 8)))
+
+        val next = nextSet(workout(entry), previous)!!
+
+        assertEquals(2L, next.set.id)
+        assertEquals(2, next.number)
+        assertEquals(62.5, next.weightKg!!, 0.001)
+        assertEquals(8, next.reps)
+        assertTrue(next.canLog)
+    }
+
+    @Test
+    fun `typed numbers win over suggestions, and no reps means nothing to log yet`() {
+        val typed = WorkoutExercise(1, bench, listOf(WorkoutSet(1, 70.0, 5, completed = false)))
+        assertEquals(70.0, nextSet(workout(typed), emptyMap())!!.weightKg!!, 0.001)
+        assertEquals(5, nextSet(workout(typed), emptyMap())!!.reps)
+
+        val blank = WorkoutExercise(1, bench, listOf(WorkoutSet(1, null, null, completed = false)))
+        assertTrue(!nextSet(workout(blank), emptyMap())!!.canLog)
+    }
+
+    @Test
+    fun `timed and bodyweight exercises carry only what applies`() {
+        val hold = WorkoutExercise(1, plank, listOf(WorkoutSet(1, null, null, completed = false, durationSeconds = 45)))
+        val next = nextSet(workout(hold), emptyMap())!!
+        assertEquals(45, next.durationSeconds)
+        assertNull(next.reps)
+        assertTrue(next.canLog)
+
+        val pull = WorkoutExercise(2, pullUp, listOf(WorkoutSet(2, 10.0, 8, completed = false)))
+        assertNull(nextSet(workout(pull), emptyMap())!!.weightKg)
+    }
+
+    @Test
+    fun `a warm-up is next too, and everything ticked means nothing`() {
+        val entry = WorkoutExercise(
+            1, bench,
+            listOf(WorkoutSet(1, 20.0, 10, completed = false, setType = SetType.Warmup), WorkoutSet(2, 60.0, 8, completed = false)),
+        )
+        assertNull(nextSet(workout(entry), emptyMap())!!.number)
+
+        val done = WorkoutExercise(1, bench, listOf(WorkoutSet(1, 60.0, 8, completed = true)))
+        assertNull(nextSet(workout(done), emptyMap()))
+    }
+}
