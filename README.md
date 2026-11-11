@@ -1,12 +1,14 @@
-# OpenLift
+# LiftTrail
 
-**Track your lifts, see the muscles you worked, and watch your progress. Free and open source, for Android.**
+*Formerly OpenLift. Renamed in November 2026, because an unrelated app already uses that name.*
+
+**Track your lifts, see the muscles you worked, and follow your progress along the trail. Free and open source, for Android.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
 ![Platform: Android 8.0+](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)
 ![Status: early development](https://img.shields.io/badge/Status-early%20development-orange.svg)
 
-> **OpenLift is in early development.** All the core features on the roadmap are in place, but it hasn't had much real-world use yet. Test builds are on the [releases page](https://github.com/shek014/OpenLift/releases).
+> **LiftTrail is in early development.** All the core features on the roadmap are in place, but it hasn't had much real-world use yet. Test builds are on the [releases page](https://github.com/shek014/LiftTrail/releases).
 
 ## What works today
 
@@ -53,7 +55,7 @@
 
 ## Try it
 
-**On your phone:** download the APK from the [latest pre-release](https://github.com/shek014/OpenLift/releases) and open it. You'll need Android 8.0 or newer, and Android may ask you to allow installs from your browser. These are early test builds, signed with a shared test key.
+**On your phone:** download the APK from the [latest pre-release](https://github.com/shek014/LiftTrail/releases) and open it. You'll need Android 8.0 or newer, and Android may ask you to allow installs from your browser. These are early test builds, signed with a shared test key.
 
 **From source:**
 
@@ -67,10 +69,10 @@ Then:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/shek014/OpenLift.git
+   git clone https://github.com/shek014/LiftTrail.git
    ```
 
-2. In Android Studio, choose **File > Open**, select the `OpenLift` folder and wait for the Gradle sync to finish. The first sync downloads a lot and can take several minutes.
+2. In Android Studio, choose **File > Open**, select the `LiftTrail` folder and wait for the Gradle sync to finish. The first sync downloads a lot and can take several minutes.
 3. Connect a phone with USB debugging turned on, or create an emulator in **Device Manager**.
 4. Press **Run**.
 
@@ -89,9 +91,9 @@ Library versions are listed in [`gradle/libs.versions.toml`](gradle/libs.version
 ## Project layout
 
 ```text
-app/src/main/java/io/github/shek014/openlift/
+app/src/main/java/io/github/shek014/lifttrail/
 ├── MainActivity.kt          App entry point
-├── OpenLiftApplication.kt   Objects shared across the app
+├── LiftTrailApplication.kt   Objects shared across the app
 ├── data/
 │   ├── ExerciseCatalog.kt   The built-in exercises and their muscles
 │   ├── ExerciseInstructions.kt  The How To steps
@@ -109,7 +111,7 @@ app/src/main/java/io/github/shek014/openlift/
 │   ├── local/               Room database
 │   └── model/               Exercises, workouts, routines, progress and statistics
 └── ui/
-    ├── OpenLiftApp.kt       Bottom bar and tab navigation
+    ├── LiftTrailApp.kt       Bottom bar and tab navigation
     ├── body/                Body map and muscle screens
     ├── charts/              Line and bar charts
     ├── exercises/           Exercise library and exercise pages
@@ -135,11 +137,11 @@ The sounds in `app/src/main/res/raw/` are made from scratch by `tools/make_sound
 
 ## Contributing
 
-OpenLift is at an early stage and its structure is still changing, so please [open an issue](https://github.com/shek014/OpenLift/issues) to discuss an idea before starting on a large change.
+LiftTrail is at an early stage and its structure is still changing, so please [open an issue](https://github.com/shek014/LiftTrail/issues) to discuss an idea before starting on a large change.
 
 ## License
 
-OpenLift is free software, released under the [GNU General Public License v3.0](LICENSE). You can use, study, change and share it. If you distribute a modified version, you must release its source code under the same license.
+LiftTrail is free software, released under the [GNU General Public License v3.0](LICENSE). You can use, study, change and share it. If you distribute a modified version, you must release its source code under the same license.
 
 The exercise animations are licensed separately, under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). They're adapted from drawings by [Everkinetic](https://github.com/everkinetic/data). See the [notice](app/src/main/assets/exercise_media/NOTICE.txt) for details.
 

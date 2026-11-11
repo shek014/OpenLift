@@ -58,10 +58,10 @@ jobs:
           [ -n "$expected" ] && [ "$expected" = "$actual" ]
 
       - name: Name the APK
-        run: mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/openlift-debug-${GITHUB_SHA::7}.apk"
+        run: mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/lifttrail-debug-${GITHUB_SHA::7}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: openlift-debug-apk
-          path: app/build/outputs/apk/debug/openlift-debug-*.apk
+          name: lifttrail-debug-apk
+          path: app/build/outputs/apk/debug/lifttrail-debug-*.apk
           if-no-files-found: error

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OpenLift"
+rootProject.name = "LiftTrail"
 include(":app")

@@ -8,14 +8,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
-        android:name=".OpenLiftApplication"
+        android:name=".LiftTrailApplication"
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.OpenLift">
+        android:theme="@style/Theme.LiftTrail">
         <activity
             android:name=".MainActivity"
             android:exported="true"

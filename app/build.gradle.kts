@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.shek014.openlift"
+    namespace = "io.github.shek014.lifttrail"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.shek014.openlift"
+        applicationId = "io.github.shek014.lifttrail"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

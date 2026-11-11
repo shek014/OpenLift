@@ -7,4 +7,4 @@ https://github.com/everkinetic/data
 
 Changes made: the two drawings for each exercise were aligned, resized, reduced
 in color and combined into an animated GIF. tools/build_exercise_gifs.py in the
-OpenLift repository shows exactly how.
+LiftTrail repository shows exactly how.

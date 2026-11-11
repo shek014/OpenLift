@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OpenLift</string>
+    <string name="app_name">LiftTrail</string>
     <string name="rest_notification_title">Resting</string>
     <string name="rest_notification_skip">Skip</string>
     <string name="rest_countdown_channel">Rest countdown</string>
