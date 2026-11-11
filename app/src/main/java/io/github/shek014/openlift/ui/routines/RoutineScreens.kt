@@ -1,5 +1,6 @@
 package io.github.shek014.openlift.ui.routines
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +52,8 @@ import io.github.shek014.openlift.data.model.format
 import io.github.shek014.openlift.data.model.isValidRepsInput
 import io.github.shek014.openlift.ui.exercises.ExerciseThumbnail
 import io.github.shek014.openlift.ui.workout.NumberField
+import io.github.shek014.openlift.ui.workout.ReorderItem
+import io.github.shek014.openlift.ui.workout.ReorderScreen
 
 @Composable
 private fun SectionTitle(title: String) {
@@ -87,30 +89,41 @@ fun Routine.summary(): String {
 fun RoutinesScreen(
     onNewRoutine: () -> Unit,
     onRoutineClick: (Long) -> Unit,
-    onSplitClick: (String) -> Unit,
+    onReorder: () -> Unit,
+    onSplits: () -> Unit,
     viewModel: RoutinesViewModel = viewModel(factory = RoutinesViewModel.Factory),
 ) {
     val routines by viewModel.routines.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("Routines") })
+        TopAppBar(
+            title = { Text("Routines") },
+            actions = {
+                if ((routines?.size ?: 0) > 1) {
+                    TextButton(onClick = onReorder) { Text("Reorder") }
+                }
+            },
+        )
         val saved = routines ?: return@Column
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item(key = "new") {
-                Button(
-                    onClick = onNewRoutine,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("New routine")
+                    Button(onClick = onNewRoutine, modifier = Modifier.fillMaxWidth()) {
+                        Text("New routine")
+                    }
+                    OutlinedButton(onClick = onSplits, modifier = Modifier.fillMaxWidth()) {
+                        Text("Recommended splits")
+                    }
                 }
             }
             item(key = "mine-title") { SectionTitle("My routines") }
             if (saved.isEmpty()) {
                 item(key = "mine-empty") {
                     Text(
-                        text = "Build your own, or add a recommended split below.",
+                        text = "Build your own, or add a recommended split.",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -125,7 +138,32 @@ fun RoutinesScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
-            item(key = "splits-title") { SectionTitle("Recommended splits") }
+        }
+    }
+}
+
+/** Ready-made programs to copy into your own routines. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SplitsScreen(onBack: () -> Unit, onSplitClick: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text("Recommended splits") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            },
+        )
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "about") {
+                Text(
+                    text = "Adding a split copies each of its days into your routines, where you can change them however you like.",
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             items(RecommendedSplits, key = { "split-${it.id}" }) { split ->
                 ListItem(
                     headlineContent = { Text(split.name) },
@@ -136,6 +174,18 @@ fun RoutinesScreen(
             }
         }
     }
+}
+
+/** Drag routines into the order you want them listed. */
+@Composable
+fun ReorderRoutinesScreen(onBack: () -> Unit, viewModel: RoutinesViewModel = viewModel(factory = RoutinesViewModel.Factory)) {
+    val routines by viewModel.routines.collectAsStateWithLifecycle()
+    ReorderScreen(
+        title = "Reorder routines",
+        items = routines.orEmpty().map { ReorderItem(it.id, it.name) },
+        onSave = viewModel::reorder,
+        onBack = onBack,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

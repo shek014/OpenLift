@@ -44,6 +44,10 @@ class RoutineRepository(
 
     suspend fun deleteRoutine(id: Long) = routineDao.deleteRoutine(id)
 
+    suspend fun renameRoutine(id: Long, name: String) = routineDao.rename(id, name.trim())
+
+    suspend fun reorderRoutines(ids: List<Long>) = routineDao.reorder(ids)
+
     /** Copies each day of a split into its own routine, which can then be changed freely. */
     suspend fun addSplit(split: Split) {
         val createdAt = now()

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RoutineDao {
     @Transaction
-    @Query("SELECT * FROM routines ORDER BY createdAt, id")
+    @Query("SELECT * FROM routines ORDER BY position, createdAt, id")
     fun observeRoutines(): Flow<List<RoutineWithExercises>>
 
     @Transaction
@@ -29,6 +29,18 @@ interface RoutineDao {
     @Query("UPDATE routines SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
 
+    @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM routines")
+    suspend fun nextPosition(): Int
+
+    @Query("UPDATE routines SET position = :position WHERE id = :id")
+    suspend fun updatePosition(id: Long, position: Int)
+
+    /** Puts the routines in the order of these ids. */
+    @Transaction
+    suspend fun reorder(ids: List<Long>) {
+        ids.forEachIndexed { position, id -> updatePosition(id, position) }
+    }
+
     @Query("DELETE FROM routine_exercises WHERE routineId = :routineId")
     suspend fun deleteExercises(routineId: Long)
 
@@ -37,7 +49,7 @@ interface RoutineDao {
 
     @Transaction
     suspend fun createRoutine(routine: RoutineEntity, exercises: List<RoutineExerciseEntity>) {
-        val id = insertRoutine(routine)
+        val id = insertRoutine(routine.copy(position = nextPosition()))
         insertExercises(exercises.map { it.copy(routineId = id) })
     }
 

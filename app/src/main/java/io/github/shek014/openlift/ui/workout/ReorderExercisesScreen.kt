@@ -61,14 +61,19 @@ fun ReorderExercisesScreen(viewModel: WorkoutEditorViewModel, onBack: () -> Unit
 /** Drag an item by its handle to move it. [onSave] gets the new order each time one is let go. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReorderScreen(items: List<ReorderItem>, onSave: (List<Long>) -> Unit, onBack: () -> Unit) {
+fun ReorderScreen(
+    items: List<ReorderItem>,
+    onSave: (List<Long>) -> Unit,
+    onBack: () -> Unit,
+    title: String = "Reorder exercises",
+) {
     // The order on screen, which moves ahead of what's saved during a drag.
     var order by remember { mutableStateOf<List<ReorderItem>?>(null) }
     val shown = order ?: items
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Reorder exercises") },
+            title = { Text(title) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

@@ -78,6 +78,9 @@ interface WorkoutDao {
     @Query("UPDATE workout_exercises SET restSeconds = :restSeconds WHERE id = :workoutExerciseId")
     suspend fun updateRestSeconds(workoutExerciseId: Long, restSeconds: Int?)
 
+    @Query("UPDATE workouts SET name = :name WHERE id = :workoutId")
+    suspend fun renameWorkout(workoutId: Long, name: String?)
+
     @Query("SELECT restSeconds FROM workouts WHERE id = :workoutId")
     suspend fun workoutRestSeconds(workoutId: Long): Int?
 

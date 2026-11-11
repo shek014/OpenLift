@@ -34,10 +34,14 @@ const val SplitIdArg = "splitId"
 /** The value of [RoutineIdArg] when the editor is making a new routine. */
 const val NewRoutineId = "new"
 
-class RoutinesViewModel(repository: RoutineRepository) : ViewModel() {
+class RoutinesViewModel(private val repository: RoutineRepository) : ViewModel() {
     /** The saved routines, or null until they've loaded. */
     val routines: StateFlow<List<Routine>?> =
         repository.routines.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun reorder(ids: List<Long>) {
+        viewModelScope.launch { repository.reorderRoutines(ids) }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {

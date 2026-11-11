@@ -1,5 +1,6 @@
 package io.github.shek014.openlift.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -12,6 +13,8 @@ data class RoutineEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAt: Long,
+    /** Where it sits in the list. Routines from before this existed all have 0, and fall back to age. */
+    @ColumnInfo(defaultValue = "0") val position: Int = 0,
 )
 
 /** An exercise planned in a routine. Null reps mean there's no target. */

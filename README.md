@@ -15,9 +15,9 @@
 - **Timed exercises:** planks, hangs and carries are tracked by time, with a built-in stopwatch on each set, or type the time yourself.
 - **Timer and stopwatch:** at the top of a workout, next to Finish.
 - **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
-- **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
+- **Routines:** build your own with target sets and reps, put them in the order you like, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs from their own screen, then start a workout in one tap.
 - **Rest timer:** off until you turn it on. Set it once in Settings, for one workout, or for a single exercise. Counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
-- **History:** look back through finished workouts, edit or delete them, and see your volume, workouts and sets week by week. Totals leave out warm-up sets.
+- **History:** look back through finished workouts, edit, rename or delete them, and see your volume, workouts and sets week by week. Totals leave out warm-up sets.
 - **Progress:** a graph and personal records for each exercise, going back as far as you've logged, with a trophy beside any set that breaks a record.
 - **Statistics:** totals, averages, streaks, your busiest days, sets per muscle and your most done exercises, plus graphs of estimated 1 rep max, best set volume, session volume and total reps for each exercise, and your best weight for each rep count.
 - **Body measurements:** optionally track body weight, height, body fat and measurements such as waist and arms, with a graph for each. BMI is off unless you turn it on.

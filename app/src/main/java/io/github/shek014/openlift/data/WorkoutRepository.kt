@@ -133,6 +133,9 @@ class WorkoutRepository(
 
     suspend fun deleteWorkout(id: Long) = dao.deleteWorkout(id)
 
+    /** A blank name goes back to the automatic one. */
+    suspend fun renameWorkout(id: Long, name: String) = dao.renameWorkout(id, name.trim().ifEmpty { null })
+
     /** Tidies up a saved workout after editing. Returns false if that left nothing in it. */
     suspend fun finishEditing(id: Long): Boolean = dao.removeUncompleted(id)
 

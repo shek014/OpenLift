@@ -289,6 +289,7 @@ class WorkoutViewModel(
 class SavedWorkoutViewModel(
     savedStateHandle: SavedStateHandle,
     repository: WorkoutRepository,
+    private val routineRepository: RoutineRepository,
 ) : WorkoutEditorViewModel(repository) {
     private val workoutId: Long = checkNotNull(savedStateHandle.get<String>(WorkoutIdArg)).toLong()
 
@@ -308,12 +309,34 @@ class SavedWorkoutViewModel(
 
     fun deleteWorkout() = run { deleteWorkout(workoutId) }
 
+    fun rename(name: String) = run { renameWorkout(workoutId, name) }
+
+    /**
+     * The routine this workout came from, if the workout now has a different name, along with the
+     * names of the other routines. Nothing, if the name wasn't changed or there's no routine.
+     */
+    fun checkRename(onResult: (routine: Routine?, otherNames: List<String>) -> Unit) {
+        viewModelScope.launch {
+            val workout = state.value?.workout
+            val routines = routineRepository.routines.first()
+            val routine = routines.find { it.id == workout?.routineId }
+            val renamed = routine != null && workout?.name != null && workout.name != routine.name
+            onResult(routine.takeIf { renamed }, routines.filter { it.id != routine?.id }.map { it.name })
+        }
+    }
+
+    fun renameRoutine(routineId: Long, name: String) {
+        viewModelScope.launch { routineRepository.renameRoutine(routineId, name) }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
+                val application = this[APPLICATION_KEY] as OpenLiftApplication
                 SavedWorkoutViewModel(
                     savedStateHandle = createSavedStateHandle(),
-                    repository = (this[APPLICATION_KEY] as OpenLiftApplication).workoutRepository,
+                    repository = application.workoutRepository,
+                    routineRepository = application.routineRepository,
                 )
             }
         }

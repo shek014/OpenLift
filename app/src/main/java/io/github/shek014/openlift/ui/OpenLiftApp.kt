@@ -53,6 +53,7 @@ import io.github.shek014.openlift.ui.measurements.MeasurementTypeArg
 import io.github.shek014.openlift.ui.measurements.MeasurementsScreen
 import io.github.shek014.openlift.ui.profile.ProfileScreen
 import io.github.shek014.openlift.ui.routines.NewRoutineId
+import io.github.shek014.openlift.ui.routines.ReorderRoutinesScreen
 import io.github.shek014.openlift.ui.routines.RoutineDetailScreen
 import io.github.shek014.openlift.ui.routines.RoutineEditorScreen
 import io.github.shek014.openlift.ui.routines.RoutineEditorViewModel
@@ -60,6 +61,7 @@ import io.github.shek014.openlift.ui.routines.RoutineIdArg
 import io.github.shek014.openlift.ui.routines.RoutinesScreen
 import io.github.shek014.openlift.ui.routines.SplitDetailScreen
 import io.github.shek014.openlift.ui.routines.SplitIdArg
+import io.github.shek014.openlift.ui.routines.SplitsScreen
 import io.github.shek014.openlift.ui.settings.SettingsScreen
 import io.github.shek014.openlift.ui.workout.ActiveWorkoutBar
 import io.github.shek014.openlift.ui.workout.ReorderExercisesScreen
@@ -206,6 +208,16 @@ fun OpenLiftApp(settings: AppSettings) {
                     RoutinesScreen(
                         onNewRoutine = { navController.navigate("routines/edit/$NewRoutineId") },
                         onRoutineClick = { id -> navController.navigate("routines/routine/$id") },
+                        onReorder = { navController.navigate("routines/reorder") },
+                        onSplits = { navController.navigate("routines/splits") },
+                    )
+                }
+                composable("routines/reorder") {
+                    ReorderRoutinesScreen(onBack = navController::popBackStack)
+                }
+                composable("routines/splits") {
+                    SplitsScreen(
+                        onBack = navController::popBackStack,
                         onSplitClick = { id -> navController.navigate("routines/split/$id") },
                     )
                 }

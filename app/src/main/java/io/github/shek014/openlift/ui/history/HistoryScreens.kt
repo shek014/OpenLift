@@ -4,9 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -16,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -25,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -36,13 +40,16 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.shek014.openlift.OpenLiftApplication
 import io.github.shek014.openlift.data.WorkoutRepository
+import io.github.shek014.openlift.data.model.Routine
 import io.github.shek014.openlift.data.model.Workout
+import io.github.shek014.openlift.data.model.displayName
 import io.github.shek014.openlift.data.model.formatDate
 import io.github.shek014.openlift.data.model.formatDuration
 import io.github.shek014.openlift.data.model.formatVolume
+import io.github.shek014.openlift.data.model.isRoutineNameTaken
 import io.github.shek014.openlift.ui.LocalWeightUnit
-import io.github.shek014.openlift.ui.workout.WorkoutEditor
 import io.github.shek014.openlift.ui.workout.SavedWorkoutViewModel
+import io.github.shek014.openlift.ui.workout.WorkoutEditor
 import io.github.shek014.openlift.ui.workout.WorkoutSummary
 import io.github.shek014.openlift.ui.workout.WorkoutSummaryViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -194,8 +201,15 @@ fun EditWorkoutScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val current = state ?: return
     val workout = current.workout ?: return
+    var renamedRoutine by remember { mutableStateOf<Pair<Routine, List<String>>?>(null) }
 
-    BackHandler { viewModel.finishEditing(onDone) }
+    // Finishing asks about the routine's name first, if the workout came from one and was renamed.
+    val done = {
+        viewModel.checkRename { routine, otherNames ->
+            if (routine == null) viewModel.finishEditing(onDone) else renamedRoutine = routine to otherNames
+        }
+    }
+    BackHandler(onBack = done)
 
     WorkoutEditor(
         workout = workout,
@@ -204,11 +218,74 @@ fun EditWorkoutScreen(
         viewModel = viewModel,
         title = { Text("Edit workout") },
         actions = {
-            TextButton(onClick = { viewModel.finishEditing(onDone) }) { Text("Done") }
+            TextButton(onClick = done) { Text("Done") }
         },
+        header = { WorkoutNameField(workout, onChange = viewModel::rename) },
         onAddExercise = onAddExercise,
         onReorder = onReorder,
         onReplace = onReplace,
         onExerciseClick = onExerciseClick,
+    )
+
+    renamedRoutine?.let { (routine, otherNames) ->
+        val newName = workout.name.orEmpty()
+        val taken = isRoutineNameTaken(newName, otherNames)
+        AlertDialog(
+            onDismissRequest = { renamedRoutine = null },
+            title = { Text("Rename the routine too?") },
+            text = {
+                Text(
+                    if (taken) {
+                        "This workout came from the routine \"${routine.name}\". Another routine is already called " +
+                            "\"$newName\", so only the workout will be renamed."
+                    } else {
+                        "This workout came from the routine \"${routine.name}\". Rename the routine to \"$newName\" as well?"
+                    },
+                )
+            },
+            confirmButton = {
+                if (!taken) {
+                    TextButton(
+                        onClick = {
+                            renamedRoutine = null
+                            viewModel.renameRoutine(routine.id, newName)
+                            viewModel.finishEditing(onDone)
+                        },
+                    ) {
+                        Text("Rename routine")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        renamedRoutine = null
+                        viewModel.finishEditing(onDone)
+                    },
+                ) {
+                    Text(if (taken) "OK" else "Just this workout")
+                }
+            },
+        )
+    }
+}
+
+/** The workout's name, saved as it's typed. Blank goes back to the automatic name. */
+@Composable
+private fun WorkoutNameField(workout: Workout, onChange: (String) -> Unit) {
+    var text by remember(workout.id) { mutableStateOf(workout.name.orEmpty()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onChange(it)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 8.dp),
+        label = { Text("Workout name") },
+        placeholder = { Text(workout.displayName()) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
     )
 }
