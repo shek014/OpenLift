@@ -771,3 +771,20 @@ class RoutineNameTest {
         assertTrue(!isRoutineNameTaken("Push Day 2", listOf("Push Day")))
     }
 }
+
+class RestChoiceTest {
+    @Test
+    fun `rest reads as off or as a time`() {
+        assertEquals("Off", formatRest(0))
+        assertEquals("1:30", formatRest(90))
+    }
+
+    @Test
+    fun `an exercise's own rest beats the workout's, which beats the setting`() {
+        fun resolve(exercise: Int?, workout: Int?, setting: Int) = exercise ?: workout ?: setting
+        assertEquals(45, resolve(45, 120, 90))
+        assertEquals(120, resolve(null, 120, 90))
+        assertEquals(90, resolve(null, null, 90))
+        assertEquals(0, resolve(0, 120, 90))
+    }
+}

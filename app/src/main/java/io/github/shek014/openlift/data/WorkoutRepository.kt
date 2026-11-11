@@ -79,7 +79,9 @@ class WorkoutRepository(
 
     suspend fun reorderExercises(workoutExerciseIds: List<Long>) = dao.reorderExercises(workoutExerciseIds)
 
-    suspend fun updateRestSeconds(workoutExerciseId: Long, seconds: Int) =
+    suspend fun setWorkoutRestSeconds(workoutId: Long, seconds: Int?) = dao.setWorkoutRestSeconds(workoutId, seconds)
+
+    suspend fun updateRestSeconds(workoutExerciseId: Long, seconds: Int?) =
         dao.updateRestSeconds(workoutExerciseId, seconds)
 
     suspend fun removeExercise(workoutExerciseId: Long) = dao.deleteWorkoutExercise(workoutExerciseId)
@@ -149,6 +151,7 @@ private fun WorkoutWithExercises.toWorkout(exercises: Map<String, Exercise>) = W
     finishedAt = workout.finishedAt,
     name = workout.name,
     routineId = workout.routineId,
+    restSeconds = workout.restSeconds,
     exercises = this.exercises
         .sortedBy { it.workoutExercise.position }
         .mapNotNull { row ->

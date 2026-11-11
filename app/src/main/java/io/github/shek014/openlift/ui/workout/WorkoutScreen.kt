@@ -250,6 +250,7 @@ private fun ActiveWorkout(
     var namingRoutine by remember { mutableStateOf<String?>(null) }
     val routines by viewModel.routines.collectAsStateWithLifecycle()
     var showingClock by rememberSaveable { mutableStateOf(false) }
+    val globalRestSeconds by settings.restSeconds.collectAsStateWithLifecycle()
     val stopwatch by viewModel.stopwatch.collectAsStateWithLifecycle()
     val finish = { update: RoutineUpdate? ->
         viewModel.finishWorkout(update) { id -> if (id != null) onWorkoutSaved(id) }
@@ -281,8 +282,15 @@ private fun ActiveWorkout(
                 }
             }
         },
-        defaultRestSeconds = AppSettings.DefaultRestSeconds,
+        defaultRestSeconds = workout.restSeconds ?: globalRestSeconds,
         settings = settings,
+        header = {
+            WorkoutRestControl(
+                workoutRest = workout.restSeconds,
+                globalRest = globalRestSeconds,
+                onChange = viewModel::setWorkoutRestSeconds,
+            )
+        },
         actions = {
             ClockButton(stopwatch) { showingClock = true }
             TextButton(
@@ -676,6 +684,7 @@ fun WorkoutEditor(
     settings: AppSettings? = null,
     extraActions: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    header: @Composable () -> Unit = {},
 ) {
     var confirmation by remember { mutableStateOf<Confirmation?>(null) }
     var warmupFor by remember { mutableStateOf<Long?>(null) }
@@ -693,6 +702,7 @@ fun WorkoutEditor(
     ) {
         TopAppBar(title = title, actions = actions)
         LazyColumn(modifier = Modifier.weight(1f)) {
+            item(key = "header") { header() }
             workout.exercises.forEach { entry ->
                 exerciseSection(
                     workout = workout,
@@ -701,6 +711,7 @@ fun WorkoutEditor(
                     recordSetIds = recordSetIds,
                     unit = unit,
                     restSeconds = defaultRestSeconds?.let { entry.restSeconds ?: it },
+                    defaultRestSeconds = defaultRestSeconds,
                     viewModel = viewModel,
                     onExerciseClick = onExerciseClick,
                     onWarmup = settings?.takeUnless { entry.exercise.isTimed || !entry.exercise.takesWeight }
@@ -825,6 +836,7 @@ private fun LazyListScope.exerciseSection(
     recordSetIds: Set<Long>,
     unit: WeightUnit,
     restSeconds: Int?,
+    defaultRestSeconds: Int?,
     viewModel: WorkoutEditorViewModel,
     onExerciseClick: (String) -> Unit,
     onWarmup: (() -> Unit)?,
@@ -918,6 +930,8 @@ private fun LazyListScope.exerciseSection(
                 restSeconds?.let { seconds ->
                     RestTimerControl(
                         seconds = seconds,
+                        defaultSeconds = defaultRestSeconds,
+                        isOwn = entry.restSeconds != null,
                         onChange = { viewModel.updateRestSeconds(entry.id, it) },
                     )
                 }
@@ -1057,9 +1071,59 @@ private fun SupersetDialog(
     )
 }
 
-/** Shows how long this exercise rests for, and lets it be changed from a menu. */
+/** The rest for the whole workout, above the exercises. Exercises can still set their own. */
 @Composable
-private fun RestTimerControl(seconds: Int, onChange: (Int) -> Unit) {
+private fun WorkoutRestControl(workoutRest: Int?, globalRest: Int, onChange: (Int?) -> Unit) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .clickable { menuOpen = true }
+                .padding(vertical = 6.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Timer,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Rest for this workout: " +
+                    if (workoutRest == null) "Settings (${formatRest(globalRest)})" else formatRest(workoutRest),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
+                text = { Text("Settings (${formatRest(globalRest)})") },
+                onClick = {
+                    menuOpen = false
+                    onChange(null)
+                },
+            )
+            AppSettings.RestSecondsChoices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(formatRest(choice)) },
+                    onClick = {
+                        menuOpen = false
+                        onChange(choice)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Shows how long this exercise rests for, and lets it be changed from a menu. [defaultSeconds] is
+ * what applies when the exercise has no rest of its own, and [isOwn] whether it has one.
+ */
+@Composable
+private fun RestTimerControl(seconds: Int, defaultSeconds: Int?, isOwn: Boolean, onChange: (Int?) -> Unit) {
     var menuOpen by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp)) {
@@ -1078,13 +1142,22 @@ private fun RestTimerControl(seconds: Int, onChange: (Int) -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = "Rest timer: ${formatRest(seconds)}",
+                text = "Rest timer: ${formatRest(seconds)}" + if (isOwn) "" else " (default)",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            AppSettings.ExerciseRestSecondsChoices.forEach { choice ->
+            defaultSeconds?.let { default ->
+                DropdownMenuItem(
+                    text = { Text("Default (${formatRest(default)})") },
+                    onClick = {
+                        menuOpen = false
+                        onChange(null)
+                    },
+                )
+            }
+            AppSettings.RestSecondsChoices.forEach { choice ->
                 DropdownMenuItem(
                     text = { Text(formatRest(choice)) },
                     onClick = {

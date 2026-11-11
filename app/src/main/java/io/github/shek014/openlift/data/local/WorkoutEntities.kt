@@ -19,6 +19,8 @@ data class WorkoutEntity(
     val name: String? = null,
     /** The routine it was started from, if any. */
     val routineId: Long? = null,
+    /** The rest timer for this workout: null means the one from Settings, and 0 means no timer. */
+    val restSeconds: Int? = null,
 )
 
 /** An exercise as done in one workout. The same exercise can appear more than once. */

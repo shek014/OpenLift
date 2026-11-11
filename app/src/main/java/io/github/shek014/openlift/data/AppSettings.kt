@@ -25,6 +25,16 @@ class AppSettings(context: Context) {
     val weightUnit: StateFlow<WeightUnit> = weightUnitState.asStateFlow()
     val lengthUnit: StateFlow<LengthUnit> = lengthUnitState.asStateFlow()
 
+    private val restSecondsState = MutableStateFlow(preferences.getInt(RestSecondsKey, DefaultRestSeconds))
+
+    /** The rest timer for every workout, unless a workout or an exercise sets its own. 0 means off. */
+    val restSeconds: StateFlow<Int> = restSecondsState.asStateFlow()
+
+    fun setRestSeconds(seconds: Int) {
+        preferences.edit { putInt(RestSecondsKey, seconds) }
+        restSecondsState.value = seconds
+    }
+
     private val recordSoundState = MutableStateFlow(savedSound(RecordSoundKey, Sound.Fanfare))
     private val restSoundState = MutableStateFlow(savedSound(RestSoundKey, Sound.Chime))
 
@@ -86,15 +96,16 @@ class AppSettings(context: Context) {
     }
 
     companion object {
-        /** The rest timer is off for an exercise until it's turned on. */
+        /** The rest timer starts off, until it's turned on in Settings, for a workout or for an exercise. */
         const val DefaultRestSeconds = 0
 
-        /** The choices for a single exercise, where 0 turns the timer off. */
-        val ExerciseRestSecondsChoices = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
+        /** The rest times to choose from, where 0 turns the timer off. */
+        val RestSecondsChoices = listOf(0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300)
 
         private const val DarkThemeKey = "dark_theme"
         private const val WeightUnitKey = "weight_unit"
         private const val ShowBmiKey = "show_bmi"
+        private const val RestSecondsKey = "rest_seconds"
         private const val RecordSoundKey = "record_sound"
         private const val RestSoundKey = "rest_sound"
         private const val LengthUnitKey = "length_unit"

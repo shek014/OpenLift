@@ -16,7 +16,7 @@
 - **Timer and stopwatch:** at the top of a workout, next to Finish.
 - **Warm-up and plate calculators:** get warm-up sets worked out from your working weight, and see what to load on each side of the bar.
 - **Routines:** build your own with target sets and reps, or add a recommended split such as Full Body, Upper/Lower or Push/Pull/Legs, then start a workout in one tap.
-- **Rest timer:** off until you turn it on for an exercise. Counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
+- **Rest timer:** off until you turn it on. Set it once in Settings, for one workout, or for a single exercise. Counts down between sets, with a notification that alerts you even with the app closed and the screen off. Set the time for each exercise, or turn it off.
 - **History:** look back through finished workouts, edit or delete them, and see your volume, workouts and sets week by week. Totals leave out warm-up sets.
 - **Progress:** a graph and personal records for each exercise, going back as far as you've logged, with a trophy beside any set that breaks a record.
 - **Statistics:** totals, averages, streaks, your busiest days, sets per muscle and your most done exercises, plus graphs of estimated 1 rep max, best set volume, session volume and total reps for each exercise, and your best weight for each rep count.
@@ -26,7 +26,7 @@
 - **Exercise notes:** keep a note with any exercise, like a seat height, and see it on its page and every time it comes up in a workout.
 - **Exercise pages:** one page for each exercise, showing its muscles on the body map, with step-by-step instructions for all of them, animations for 144, and a log of every set you've done.
 - **Profile:** your totals, and the way to History, Statistics, Exercises, Body and Settings.
-- **Settings:** dark or light theme, kilograms or pounds, centimeters or inches, BMI, and the sounds for personal records and the rest timer.
+- **Settings:** grouped into appearance, units, workouts, sounds, body and data: theme, kilograms or pounds, centimeters or inches, the rest timer, the sounds for personal records and the rest timer, BMI, and backups.
 - **Backups:** save everything to a file you keep wherever you like, and restore it later or on another phone.
 
 ## What's planned

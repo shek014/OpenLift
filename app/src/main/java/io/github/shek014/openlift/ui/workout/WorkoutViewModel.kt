@@ -139,7 +139,14 @@ abstract class WorkoutEditorViewModel(protected val repository: WorkoutRepositor
     /** Stops the stopwatch and returns how many seconds it ran. */
     open fun stopSetTimer(): Int? = null
 
-    fun updateRestSeconds(workoutExerciseId: Long, seconds: Int) = run { updateRestSeconds(workoutExerciseId, seconds) }
+    /** Null goes back to the rest from Settings. */
+    fun updateRestSeconds(workoutExerciseId: Long, seconds: Int?) = run { updateRestSeconds(workoutExerciseId, seconds) }
+
+    /** The rest for every exercise in this workout. Null goes back to the rest from Settings. */
+    fun setWorkoutRestSeconds(seconds: Int?) {
+        val workoutId = state.value?.workout?.id ?: return
+        run { setWorkoutRestSeconds(workoutId, seconds) }
+    }
 
     fun uncompleteSet(setId: Long) = run { uncompleteSet(setId) }
 }

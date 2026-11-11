@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,9 +49,10 @@ import io.github.shek014.openlift.data.Sound
 import io.github.shek014.openlift.data.backupFileName
 import io.github.shek014.openlift.data.model.LengthUnit
 import io.github.shek014.openlift.data.model.WeightUnit
-import kotlinx.coroutines.launch
+import io.github.shek014.openlift.data.model.formatRest
 import java.io.IOException
 import java.time.LocalDate
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +65,7 @@ fun SettingsScreen(
     val weightUnit by settings.weightUnit.collectAsStateWithLifecycle()
     val lengthUnit by settings.lengthUnit.collectAsStateWithLifecycle()
     val showBmi by settings.showBmi.collectAsStateWithLifecycle()
+    val restSeconds by settings.restSeconds.collectAsStateWithLifecycle()
     val recordSound by settings.recordSound.collectAsStateWithLifecycle()
     val restSound by settings.restSound.collectAsStateWithLifecycle()
     val player = (LocalContext.current.applicationContext as OpenLiftApplication).soundPlayer
@@ -79,64 +83,100 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            Choices(
-                title = "Theme",
-                choices = listOf(true, false),
-                selected = darkTheme,
-                label = { if (it) "Dark" else "Light" },
-                onSelect = settings::setDarkTheme,
-            )
-            Choices(
-                title = "Weight unit",
-                note = "Your existing workouts convert automatically.",
-                choices = WeightUnit.entries,
-                selected = weightUnit,
-                label = { it.label },
-                onSelect = settings::setWeightUnit,
-            )
-            Choices(
-                title = "Length unit",
-                note = "For body measurements. Your existing entries convert automatically.",
-                choices = LengthUnit.entries,
-                selected = lengthUnit,
-                label = { it.label },
-                onSelect = settings::setLengthUnit,
-            )
-            Choices(
-                title = "BMI",
-                note = "Shows on Body measurements once you've added your height and body weight.",
-                choices = listOf(false, true),
-                selected = showBmi,
-                label = { if (it) "Show" else "Hide" },
-                onSelect = settings::setShowBmi,
-            )
-            Choices(
-                title = "Personal record sound",
-                note = "Plays when a set beats your best. Choosing one plays it.",
-                choices = Sound.entries,
-                selected = recordSound,
-                label = { it.label },
-                onSelect = {
-                    settings.setRecordSound(it)
-                    player.play(it)
-                },
-            )
-            Choices(
-                title = "Rest timer sound",
-                note = "Plays when your rest is over. Both sounds follow your phone's notification volume.",
-                choices = Sound.entries,
-                selected = restSound,
-                label = { it.label },
-                onSelect = {
-                    settings.setRestSound(it)
-                    player.play(it)
-                },
-            )
-            BackupSection(backupViewModel)
+            Section("Appearance") {
+                Choices(
+                    title = "Theme",
+                    choices = listOf(true, false),
+                    selected = darkTheme,
+                    label = { if (it) "Dark" else "Light" },
+                    onSelect = settings::setDarkTheme,
+                )
+            }
+            Section("Units") {
+                Choices(
+                    title = "Weight",
+                    note = "Your existing workouts convert automatically.",
+                    choices = WeightUnit.entries,
+                    selected = weightUnit,
+                    label = { it.label },
+                    onSelect = settings::setWeightUnit,
+                )
+                Choices(
+                    title = "Length",
+                    note = "For body measurements. Your existing entries convert automatically.",
+                    choices = LengthUnit.entries,
+                    selected = lengthUnit,
+                    label = { it.label },
+                    onSelect = settings::setLengthUnit,
+                )
+            }
+            Section("Workouts") {
+                Choices(
+                    title = "Rest timer",
+                    note = "The countdown after each set. A workout or an exercise can still set its own.",
+                    choices = AppSettings.RestSecondsChoices,
+                    selected = restSeconds,
+                    label = { formatRest(it) },
+                    onSelect = settings::setRestSeconds,
+                )
+            }
+            Section("Sounds") {
+                Choices(
+                    title = "Personal record",
+                    note = "Plays when a set beats your best. Choosing one plays it.",
+                    choices = Sound.entries,
+                    selected = recordSound,
+                    label = { it.label },
+                    onSelect = {
+                        settings.setRecordSound(it)
+                        player.play(it)
+                    },
+                )
+                Choices(
+                    title = "Rest over",
+                    note = "Plays when your rest is over. Both sounds follow your phone's notification volume.",
+                    choices = Sound.entries,
+                    selected = restSound,
+                    label = { it.label },
+                    onSelect = {
+                        settings.setRestSound(it)
+                        player.play(it)
+                    },
+                )
+            }
+            Section("Body") {
+                Choices(
+                    title = "BMI",
+                    note = "Shows on Body measurements once you've added your height and body weight.",
+                    choices = listOf(false, true),
+                    selected = showBmi,
+                    label = { if (it) "Show" else "Hide" },
+                    onSelect = settings::setShowBmi,
+                )
+            }
+            Section("Data") {
+                BackupSection(backupViewModel)
+            }
         }
+    }
+}
+
+/** A group of related settings under one heading. */
+@Composable
+private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column {
+            Text(
+                text = title,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground)
+        }
+        content()
     }
 }
 

@@ -62,6 +62,8 @@ data class Workout(
     val name: String? = null,
     /** The routine it was started from, if any. */
     val routineId: Long? = null,
+    /** The rest timer for this workout: null means the one from Settings, and 0 means no timer. */
+    val restSeconds: Int? = null,
 ) {
     /** The exercises that have something to show once unchecked sets are ignored. */
     val completedExercises: List<WorkoutExercise>

@@ -76,7 +76,30 @@ interface WorkoutDao {
     suspend fun lastRestSeconds(exerciseId: String): Int?
 
     @Query("UPDATE workout_exercises SET restSeconds = :restSeconds WHERE id = :workoutExerciseId")
-    suspend fun updateRestSeconds(workoutExerciseId: Long, restSeconds: Int)
+    suspend fun updateRestSeconds(workoutExerciseId: Long, restSeconds: Int?)
+
+    @Query("SELECT restSeconds FROM workouts WHERE id = :workoutId")
+    suspend fun workoutRestSeconds(workoutId: Long): Int?
+
+    @Query("SELECT workoutId FROM workout_exercises WHERE id = :workoutExerciseId")
+    suspend fun workoutIdOf(workoutExerciseId: Long): Long
+
+    @Query("UPDATE workouts SET restSeconds = :restSeconds WHERE id = :workoutId")
+    suspend fun updateWorkoutRestSeconds(workoutId: Long, restSeconds: Int?)
+
+    @Query("UPDATE workout_exercises SET restSeconds = NULL WHERE workoutId = :workoutId")
+    suspend fun clearExerciseRestSeconds(workoutId: Long)
+
+    /** Sets the rest for the whole workout. Exercises that had their own rest follow it from now on. */
+    @Transaction
+    suspend fun setWorkoutRestSeconds(workoutId: Long, restSeconds: Int?) {
+        updateWorkoutRestSeconds(workoutId, restSeconds)
+        clearExerciseRestSeconds(workoutId)
+    }
+
+    /** An exercise's rest from last time, unless this workout has its own rest, which then applies. */
+    private suspend fun rememberedRestSeconds(workoutId: Long, exerciseId: String): Int? =
+        if (workoutRestSeconds(workoutId) == null) lastRestSeconds(exerciseId) else null
 
     @Query("SELECT id FROM workouts WHERE finishedAt IS NULL LIMIT 1")
     suspend fun activeWorkoutId(): Long?
@@ -195,7 +218,7 @@ interface WorkoutDao {
 
     @Transaction
     suspend fun replaceExercise(workoutExerciseId: Long, exerciseId: String) {
-        pointAtExercise(workoutExerciseId, exerciseId, lastRestSeconds(exerciseId))
+        pointAtExercise(workoutExerciseId, exerciseId, rememberedRestSeconds(workoutIdOf(workoutExerciseId), exerciseId))
         // The numbers belonged to the old exercise, but the number of sets is probably still right.
         deleteWarmupSets(workoutExerciseId)
         clearSets(workoutExerciseId)
@@ -241,7 +264,7 @@ interface WorkoutDao {
                 workoutId = workoutId,
                 exerciseId = exerciseId,
                 position = nextExercisePosition(workoutId),
-                restSeconds = lastRestSeconds(exerciseId),
+                restSeconds = rememberedRestSeconds(workoutId, exerciseId),
             ),
         )
         insertSet(WorkoutSetEntity(workoutExerciseId = id, position = 0))
